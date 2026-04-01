@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Environment — never commit secrets
+.env
+apps/backend/.env
+apps/frontend/.env
+
+# Kubernetes secrets — contain real prod credentials, never commit
+k8s/20-secrets/app-secret.yaml
+k8s/20-secrets/db-secret.yaml
+
+# Build outputs
+dist/
+apps/backend/dist/
+coverage/
+*.local
+
+# TLS certificates (generated locally)
+*.crt
+*.key
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Claude Code
+.claude/
