@@ -1,0 +1,290 @@
+import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { INoteRepository, NOTE_REPOSITORY } from '../../domain/repositories/note.repository.interface';
+import { NoteVersion } from '../../domain/entities/note-version.entity';
+import { NoteShare, SharePermission } from '../../domain/entities/note-share.entity';
+import { Note } from '../../domain/entities/note.entity';
+import { User } from '../../../auth/domain/entities/user.entity';
+import { Tag } from '../../../tags/domain/entities/tag.entity';
+import { Folder } from '../../../folders/domain/entities/folder.entity';
+import { CreateNoteDto } from '../dto/create-note.dto';
+import { UpdateNoteDto } from '../dto/update-note.dto';
+import { QueryNotesDto } from '../dto/query-notes.dto';
+
+const VERSION_THROTTLE_SECONDS = 60;
+
+export type NoteWithPermission = Note & { sharedPermission?: 'READ' | 'WRITE' };
+
+@Injectable()
+export class NotesService {
+  constructor(
+    @Inject(NOTE_REPOSITORY) private readonly noteRepository: INoteRepository,
+    @InjectRepository(NoteVersion) private readonly versionRepository: Repository<NoteVersion>,
+    @InjectRepository(NoteShare) private readonly shareRepository: Repository<NoteShare>,
+    @InjectRepository(User) private readonly userRepository: Repository<User>,
+    @InjectRepository(Tag) private readonly tagRepository: Repository<Tag>,
+    @InjectRepository(Folder) private readonly folderRepository: Repository<Folder>,
+  ) {}
+
+  findAll(userId: string, query: QueryNotesDto) {
+    return this.noteRepository.findAll(userId, {
+      folderId: query.folderId,
+      tagId: query.tagId,
+      favorite: query.favorite,
+      archived: query.archived,
+    });
+  }
+
+  search(userId: string, q: string) {
+    return this.noteRepository.search(userId, q);
+  }
+
+  async findOne(userId: string, id: string): Promise<NoteWithPermission> {
+    const owned = await this.noteRepository.findById(userId, id);
+    if (owned) return owned;
+
+    const share = await this.shareRepository.findOne({
+      where: { noteId: id, sharedWithId: userId },
+      relations: ['note', 'note.tags'],
+    });
+    if (share?.note && !share.note.isDeleted) {
+      return { ...share.note, sharedPermission: share.permission };
+    }
+
+    throw new NotFoundException('Note not found');
+  }
+
+  async findSharedWithMe(userId: string): Promise<NoteWithPermission[]> {
+    const shares = await this.shareRepository.find({
+      where: { sharedWithId: userId },
+      relations: ['note', 'note.tags'],
+    });
+    return shares
+      .filter((s): s is typeof s & { note: Note } => !!s.note && !s.note.isDeleted)
+      .map(s => ({ ...s.note, sharedPermission: s.permission }));
+  }
+
+  async hasAccess(userId: string, noteId: string): Promise<boolean> {
+    const owned = await this.noteRepository.findById(userId, noteId);
+    if (owned) return true;
+    const share = await this.shareRepository.findOne({ where: { noteId, sharedWithId: userId } });
+    return !!share;
+  }
+
+  async getPermission(userId: string, noteId: string): Promise<'OWNER' | 'READ' | 'WRITE'> {
+    const owned = await this.noteRepository.findById(userId, noteId);
+    if (owned) return 'OWNER';
+    const share = await this.shareRepository.findOne({ where: { noteId, sharedWithId: userId } });
+    if (share) return share.permission;
+    throw new NotFoundException('Note not found');
+  }
+
+  async create(userId: string, dto: CreateNoteDto) {
+    if (dto.folderId) {
+      const folder = await this.folderRepository.findOne({ where: { id: dto.folderId, userId } });
+      if (!folder) throw new NotFoundException('Folder not found');
+    }
+    return this.noteRepository.save({
+      userId,
+      title: dto.title ?? '',
+      content: dto.content ?? '',
+      folderId: dto.folderId ?? null,
+      tags: [],
+    });
+  }
+
+  async update(userId: string, id: string, dto: UpdateNoteDto) {
+    let existing = await this.noteRepository.findById(userId, id);
+    let ownerId = userId;
+
+    if (!existing) {
+      // User is not the owner — check for WRITE permission via share
+      const share = await this.shareRepository.findOne({
+        where: { noteId: id, sharedWithId: userId },
+        relations: ['note', 'note.tags'],
+      });
+      if (!share || share.permission !== 'WRITE' || !share.note || share.note.isDeleted) {
+        throw new NotFoundException('Note not found');
+      }
+      existing = share.note;
+      ownerId = existing.userId;
+      // Shared users cannot change folder assignment
+      delete (dto as Partial<typeof dto>).folderId;
+    }
+
+    if (dto.folderId) {
+      const folder = await this.folderRepository.findOne({ where: { id: dto.folderId, userId } });
+      if (!folder) throw new NotFoundException('Folder not found');
+    }
+
+    const contentChanged =
+      (dto.title !== undefined && dto.title !== existing.title) ||
+      (dto.content !== undefined && dto.content !== existing.content);
+
+    if (contentChanged) {
+      await this.saveVersionIfNeeded(id, existing.title, existing.content);
+    }
+
+    await this.noteRepository.update(ownerId, id, dto);
+    return this.noteRepository.findById(ownerId, id);
+  }
+
+  async remove(userId: string, id: string) {
+    const note = await this.noteRepository.findById(userId, id);
+    if (!note) throw new NotFoundException('Note not found');
+    await this.noteRepository.softDelete(userId, id);
+  }
+
+  async addTag(userId: string, noteId: string, tagId: string) {
+    const note = await this.noteRepository.findById(userId, noteId);
+    if (!note) throw new NotFoundException('Note not found');
+    const tag = await this.tagRepository.findOne({ where: { id: tagId, userId } });
+    if (!tag) throw new NotFoundException('Tag not found');
+    await this.noteRepository.addTag(noteId, tagId);
+    return this.noteRepository.findById(userId, noteId);
+  }
+
+  async removeTag(userId: string, noteId: string, tagId: string) {
+    const note = await this.noteRepository.findById(userId, noteId);
+    if (!note) throw new NotFoundException('Note not found');
+    const tag = await this.tagRepository.findOne({ where: { id: tagId, userId } });
+    if (!tag) throw new NotFoundException('Tag not found');
+    await this.noteRepository.removeTag(noteId, tagId);
+    return this.noteRepository.findById(userId, noteId);
+  }
+
+  async getVersions(userId: string, noteId: string) {
+    await this.findOne(userId, noteId);
+    return this.versionRepository.find({
+      where: { noteId },
+      order: { versionNumber: 'DESC' },
+    });
+  }
+
+  async restoreVersion(userId: string, noteId: string, versionId: string) {
+    const note = await this.noteRepository.findById(userId, noteId);
+    if (!note) throw new NotFoundException('Note not found');
+    const version = await this.versionRepository.findOne({ where: { id: versionId, noteId } });
+    if (!version) throw new NotFoundException('Version not found');
+    await this.saveVersionIfNeeded(noteId, note.title, note.content);
+    await this.noteRepository.update(userId, noteId, {
+      title: version.title,
+      content: version.content,
+    });
+    return this.noteRepository.findById(userId, noteId);
+  }
+
+  async getShares(ownerId: string, noteId: string) {
+    const note = await this.noteRepository.findById(ownerId, noteId);
+    if (!note) throw new NotFoundException('Note not found');
+    const shares = await this.shareRepository.find({
+      where: { noteId },
+      relations: ['sharedWith'],
+    });
+    return shares.map(s => ({
+      id: s.id,
+      permission: s.permission,
+      sharedWith: {
+        id: s.sharedWith.id,
+        email: s.sharedWith.email,
+        firstName: s.sharedWith.firstName,
+        lastName: s.sharedWith.lastName,
+      },
+      createdAt: s.createdAt,
+    }));
+  }
+
+  async shareNote(ownerId: string, noteId: string, email: string, permission: SharePermission) {
+    const note = await this.noteRepository.findById(ownerId, noteId);
+    if (!note) throw new NotFoundException('Note not found');
+    const targetUser = await this.userRepository.findOne({ where: { email } });
+    if (!targetUser) throw new NotFoundException('User not found');
+    if (targetUser.id === ownerId) throw new BadRequestException('Cannot share with yourself');
+    await this.shareRepository.upsert(
+      { noteId, sharedWithId: targetUser.id, permission },
+      { conflictPaths: ['noteId', 'sharedWithId'] },
+    );
+  }
+
+  async updateSharePermission(
+    ownerId: string,
+    noteId: string,
+    shareId: string,
+    permission: SharePermission,
+  ): Promise<string> {
+    const note = await this.noteRepository.findById(ownerId, noteId);
+    if (!note) throw new NotFoundException('Note not found');
+    const share = await this.shareRepository.findOne({ where: { id: shareId, noteId } });
+    if (!share) throw new NotFoundException('Share not found');
+    await this.shareRepository.update(shareId, { permission });
+    return share.sharedWithId;
+  }
+
+  async revokeShare(ownerId: string, noteId: string, shareId: string): Promise<string> {
+    const note = await this.noteRepository.findById(ownerId, noteId);
+    if (!note) throw new NotFoundException('Note not found');
+    const share = await this.shareRepository.findOne({ where: { id: shareId, noteId } });
+    if (!share) throw new NotFoundException('Share not found');
+    await this.shareRepository.delete(shareId);
+    return share.sharedWithId;
+  }
+
+  async getStats(userId: string) {
+    const [allNotes, favoriteNotes, archivedNotes] = await Promise.all([
+      this.noteRepository.findAll(userId, {}),
+      this.noteRepository.findAll(userId, { favorite: true }),
+      this.noteRepository.findAll(userId, { archived: true }),
+    ]);
+
+    const [sharedByMe, sharedWithMe] = await Promise.all([
+      this.shareRepository
+        .createQueryBuilder('s')
+        .innerJoin('s.note', 'n')
+        .where('n.userId = :userId AND n.isDeleted = false', { userId })
+        .getCount(),
+      this.shareRepository.count({ where: { sharedWithId: userId } }),
+    ]);
+
+    const recent = [...allNotes]
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, 5)
+      .map(n => ({ id: n.id, title: n.title || 'Untitled', updatedAt: n.updatedAt }));
+
+    const topTags: Array<{ id: string; name: string; color: string; noteCount: number }> =
+      await this.tagRepository.manager.query(
+        `SELECT t.id, t.name, t.color, COUNT(nt.note_id)::int AS "noteCount"
+         FROM tags t
+         LEFT JOIN note_tags nt ON nt.tag_id = t.id
+         LEFT JOIN notes n ON n.id = nt.note_id AND n.user_id = $1 AND n.is_deleted = false
+         WHERE t.user_id = $1
+         GROUP BY t.id, t.name, t.color
+         ORDER BY COUNT(nt.note_id) DESC
+         LIMIT 5`,
+        [userId],
+      );
+
+    return {
+      totalNotes: allNotes.length,
+      favoriteNotes: favoriteNotes.length,
+      archivedNotes: archivedNotes.length,
+      sharedByMe,
+      sharedWithMe,
+      recentNotes: recent,
+      topTags,
+    };
+  }
+
+  private async saveVersionIfNeeded(noteId: string, title: string, content: string) {
+    const last = await this.versionRepository.findOne({
+      where: { noteId },
+      order: { createdAt: 'DESC' },
+    });
+    if (last) {
+      const diffSec = (Date.now() - new Date(last.createdAt).getTime()) / 1000;
+      if (diffSec < VERSION_THROTTLE_SECONDS) return;
+    }
+    const count = await this.versionRepository.count({ where: { noteId } });
+    await this.versionRepository.save({ noteId, title, content, versionNumber: count + 1 });
+  }
+}
