@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /notes
+Disallow: /settings
+Disallow: /dashboard
+Sitemap: REPLACE_WITH_YOUR_DOMAIN/sitemap.xml
