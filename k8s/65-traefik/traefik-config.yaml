@@ -1,0 +1,23 @@
+# Configure Traefik (déjà installé par K3s) pour activer Let's Encrypt ACME
+# Appliqué dans le namespace kube-system pour patcher le HelmChart Traefik
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    additionalArguments:
+      # Resolver Let's Encrypt HTTP-01 (port 80 doit être ouvert)
+      - "--certificatesresolvers.letsencrypt.acme.email=cinely.esgi@gmail.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+    # Persistance pour stocker acme.json entre les redémarrages
+    persistence:
+      enabled: true
+      size: 128Mi
+    # Redirection globale HTTP → HTTPS
+    ports:
+      web:
+        redirectTo:
+          port: websecure
