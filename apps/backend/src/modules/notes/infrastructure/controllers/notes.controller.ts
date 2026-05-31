@@ -2,6 +2,7 @@ import {
   Controller, Get, Post, Put, Patch, Delete,
   Body, Param, Query, UseGuards, HttpCode,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt.guard';
 import { CurrentUser } from '../../../../shared/decorators/current-user.decorator';
 import { NotesService } from '../../application/services/notes.service';
@@ -12,6 +13,8 @@ import { QueryNotesDto } from '../../application/dto/query-notes.dto';
 import { CreateShareDto } from '../../application/dto/create-share.dto';
 import { UpdateSharePermissionDto } from '../../application/dto/update-share-permission.dto';
 
+@ApiTags('notes')
+@ApiBearerAuth()
 @Controller('notes')
 @UseGuards(JwtAuthGuard)
 export class NotesController {

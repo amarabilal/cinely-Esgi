@@ -1,6 +1,7 @@
 import {
   Controller, Get, Put, Post, Delete, Body, Param, HttpCode, UseGuards,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt.guard';
 import { CurrentUser } from '../../../../shared/decorators/current-user.decorator';
 import { SettingsService } from '../../application/services/settings.service';
@@ -8,6 +9,8 @@ import { UpdateProfileDto } from '../../application/dto/update-profile.dto';
 import { ChangePasswordDto } from '../../application/dto/change-password.dto';
 import { TotpVerifyDto } from '../../application/dto/totp-verify.dto';
 
+@ApiTags('settings')
+@ApiBearerAuth()
 @Controller('settings')
 @UseGuards(JwtAuthGuard)
 export class SettingsController {

@@ -1,6 +1,7 @@
 import {
   Controller, Post, Get, Body, Param, Req, Res, HttpCode, UseGuards,
 } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from '../../application/services/auth.service';
@@ -20,6 +21,7 @@ const COOKIE_OPTIONS = {
   path: '/',
 };
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

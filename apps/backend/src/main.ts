@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import * as Sentry from '@sentry/node';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -36,6 +37,23 @@ async function bootstrap() {
   );
 
   app.setGlobalPrefix('api');
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Cinely API')
+    .setDescription('API REST de l\'application de notes collaborative Cinely')
+    .setVersion('1.0.0')
+    .addBearerAuth()
+    .addTag('auth', 'Authentification, 2FA, reset mot de passe')
+    .addTag('notes', 'CRUD notes, versioning, partage, recherche')
+    .addTag('folders', 'Gestion des dossiers')
+    .addTag('tags', 'Gestion des tags colorés')
+    .addTag('settings', 'Profil utilisateur, sessions, 2FA setup')
+    .addTag('health', 'État de santé de l\'application')
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: { persistAuthorization: true },
+  });
 
   await app.listen(3000);
 }
