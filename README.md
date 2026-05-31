@@ -1,8 +1,11 @@
 # Cinely — Application de notes collaborative
 
+[![CI/CD](https://github.com/amarabilal/cinely-Esgi/actions/workflows/ci.yml/badge.svg)](https://github.com/amarabilal/cinely-Esgi/actions/workflows/ci.yml)
+
 Application de prise de notes avancée avec éditeur WYSIWYG, collaboration temps réel, 2FA et versioning automatique.
 
-**Production :** https://cinely.fr
+**Production :** https://cinely.fr  
+**API Docs :** https://cinely.fr/api/docs
 
 ---
 
