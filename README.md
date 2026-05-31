@@ -1,403 +1,343 @@
-# Cluster Project — Orchestration de Conteneurs
+# Cinely — Application de notes collaborative
 
-Architecture conteneurisée et orchestrée sur **K3s** (Kubernetes), déployant un frontend Nginx, un backend Node.js/Express et une base de données PostgreSQL, avec haute disponibilité, persistance, secrets et HTTPS.
+Application de prise de notes avancée avec éditeur WYSIWYG, collaboration temps réel, 2FA et versioning automatique.
 
----
-
-## Architecture
-
-```text
-Internet
-    │
-    ▼
-[ Traefik Ingress ]  ← TLS (app.local)
-    │
-    ├──/──────────► [ Frontend ×3 ] (Nginx:80)
-    │
-    └──/api────────► [ Backend ×2 ] (Node.js:3000)
-                          │
-                          ▼
-                   [ PostgreSQL ×1 ] (StatefulSet)
-                          │
-                          ▼
-                   [ PersistentVolume 5Gi ]
-```
-
-**Nœuds du cluster :**
-
-| Rôle   | Hostname     |
-|--------|--------------|
-| Master | master-node  |
-| Worker | worker-1     |
-| Worker | worker-2     |
-
-**Namespace :** `cluster-project`
+**Production :** https://cinely.fr
 
 ---
 
 ## Stack technique
 
-| Couche          | Technologie            |
-|-----------------|------------------------|
-| Frontend        | Nginx 1.27-alpine      |
-| Backend         | Node.js 20 / Express   |
-| Base de données | PostgreSQL 16          |
-| Orchestration   | K3s (Kubernetes)       |
-| Ingress         | Traefik (intégré K3s)  |
-| Stockage        | PVC local-path (5 Gi)  |
-| Config          | ConfigMap + Secret K8s |
+| Couche | Technologie |
+|--------|------------|
+| Frontend | Vue 3 + Vite + TypeScript + Tailwind CSS + Pinia |
+| Backend | NestJS + TypeScript + Clean Architecture |
+| Base de données | PostgreSQL 16 + TypeORM |
+| Cache / Throttle | Redis 7 |
+| Temps réel | Socket.io (WebSocket) |
+| Auth | JWT (access 15min + refresh 7j HttpOnly) + Argon2 |
+| 2FA | TOTP RFC 6238 (HMAC-SHA1, sans librairie externe) |
+| Éditeur | Tiptap (ProseMirror) |
+| Orchestration | K3s (Kubernetes) — 1 master + 2 workers |
+| CI/CD | GitHub Actions → Docker Hub → K3s rolling update |
+| Monitoring | Uptime Kuma + GlitchTip + Matomo |
+| Mail (dev) | Mailhog |
 
 ---
 
-## Prérequis
+## Prérequis locaux
 
-- 3 VPS/VM sous Linux (Ubuntu 22.04 recommandé)
-- `kubectl` configuré sur le master
+- Node.js 20+
+- Docker + Docker Compose
+- Git
+
+---
+
+## Installation locale
+
+```bash
+git clone https://github.com/amarabilal/cinely-Esgi.git
+cd cinely-Esgi
+
+# Copier les variables d'environnement
+cp .env.example .env
+
+# Démarrer tous les services (backend, frontend, postgres, redis, mailhog)
+docker-compose up
+```
+
+L'application est accessible sur :
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:5173 |
+| API | http://localhost:3000/api |
+| Mailhog (emails dev) | http://localhost:8025 |
+
+---
+
+## Variables d'environnement
+
+Toutes les variables sont dans `.env.example` :
+
+```env
+# Base de données
+DB_NAME=notesdb
+DB_USER=notesuser
+DB_PASSWORD=changeme_strong_password
+
+# Redis
+REDIS_PASSWORD=changeme_redis_password
+
+# JWT (générer avec : openssl rand -hex 64)
+JWT_ACCESS_SECRET=changeme_access_secret_min_32_chars
+JWT_REFRESH_SECRET=changeme_refresh_secret_min_32_chars
+
+# URL du frontend (CORS)
+FRONTEND_URL=http://localhost:5173
+```
+
+---
+
+## Tests
+
+```bash
+cd apps/backend
+
+# Tests unitaires (59 tests — Jest)
+npm test
+
+# Tests fonctionnels API (26 tests — Supertest)
+# Nécessite : docker-compose up -d postgres
+DB_HOST=localhost DB_NAME=notesdb_test DB_USER=notesuser \
+DB_PASSWORD=changeme_strong_password \
+JWT_ACCESS_SECRET=test-secret JWT_REFRESH_SECRET=test-refresh \
+NODE_ENV=test npm run test:e2e
+
+# Couverture
+npm run test:cov
+```
+
+```bash
+# Tests E2E interface (Playwright)
+cd apps/frontend
+npx playwright test
+```
+
+---
+
+## Architecture
+
+```
+Internet
+    │
+    ▼
+[ Traefik Ingress ] ← Let's Encrypt SSL (cinely.fr)
+    │
+    ├── /          → [ Frontend ×3 ] Nginx (Vue 3 SPA)
+    │
+    ├── /api       → [ Backend ×2 ] NestJS
+    │                     │
+    │                     ├── PostgreSQL (StatefulSet)
+    │                     ├── Redis (throttling)
+    │                     └── Socket.io (WebSocket)
+    │
+    ├── /socket.io → [ Backend ×2 ] WebSocket upgrade
+    │
+    └── Sous-domaines :
+        uptime.cinely.fr   → Uptime Kuma
+        glitchtip.cinely.fr → GlitchTip
+        matomo.cinely.fr   → Matomo
+```
+
+**Cluster K3s — 3 VPS Ubuntu 22.04 :**
+
+| Rôle | IP | Pods |
+|------|----|------|
+| Master | 141.227.151.228 | Traefik, Uptime Kuma |
+| Worker 1 | — | Backend ×2, PostgreSQL |
+| Worker 2 | — | Frontend ×3, GlitchTip, Matomo |
+
+**Namespace :** `cluster-project`
+
+---
+
+## Structure du projet
+
+```
+cinely-Esgi/
+├── apps/
+│   ├── backend/                    # NestJS — Clean Architecture
+│   │   ├── src/
+│   │   │   ├── modules/
+│   │   │   │   ├── auth/           # Register, login, 2FA, reset mdp
+│   │   │   │   ├── notes/          # CRUD, versioning, partage, WebSocket
+│   │   │   │   ├── folders/        # Dossiers
+│   │   │   │   ├── tags/           # Tags colorés
+│   │   │   │   └── settings/       # Profil, sessions, 2FA setup
+│   │   │   ├── health/             # GET /api/health
+│   │   │   └── shared/             # Guards, decorators, TOTP service
+│   │   └── Dockerfile
+│   └── frontend/                   # Vue 3 + Vite
+│       ├── src/
+│       │   ├── views/
+│       │   │   ├── auth/           # Login, Register, 2FA, Reset mdp
+│       │   │   ├── notes/          # NotesView (3 panneaux), Dashboard
+│       │   │   ├── settings/       # Profil, sessions, 2FA
+│       │   │   ├── public/         # SEO (Home, Features, Security, Contact)
+│       │   │   └── legal/          # CGU, Confidentialité, Cookies
+│       │   ├── stores/             # Pinia (auth, notes, settings)
+│       │   ├── composables/        # useNoteSync, RemoteCursorExtension
+│       │   └── api/                # Clients Axios
+│       └── Dockerfile
+├── k8s/                            # Manifests Kubernetes
+│   ├── 00-namespace/
+│   ├── 10-config/                  # ConfigMap
+│   ├── 20-secrets/                 # *.yaml.example (secrets hors git)
+│   ├── 25-redis/
+│   ├── 30-db/                      # PostgreSQL StatefulSet
+│   ├── 40-backend/                 # Deployment + Service
+│   ├── 50-frontend/                # Deployment + Service
+│   ├── 60-ingress/                 # Traefik IngressRoute
+│   ├── 65-traefik/
+│   └── 70-hpa/                     # HPA (backend 2-6, frontend 3-9)
+├── scripts/
+│   ├── deploy.sh
+│   └── cleanup.sh
+├── .github/workflows/ci.yml        # Pipeline CI/CD
+├── docker-compose.yml              # Dev local
+└── .env.example
+```
+
+---
+
+## Fonctionnalités
+
+### Sécurité (CNIL)
+- Inscription / Connexion / Mot de passe oublié / Réinitialisation
+- Mot de passe fort : 12 caractères min, chiffres + lettres + symboles
+- Blocage compte après 5 tentatives (15 min)
+- Renouvellement mot de passe obligatoire tous les 60 jours
+- Email de vérification à l'inscription (token 24h)
+
+### 2FA TOTP (bonus)
+- Implémentation sans librairie externe (HMAC-SHA1 pur, Base32, RFC 6238)
+- Tolérance ±1 step (dérive horloge)
+- 8 codes de récupération SHA-256 (affichés une seule fois)
+- QR code compatible Google/Microsoft Authenticator
+
+### Notes
+- Éditeur WYSIWYG Tiptap (gras, italique, listes, titres...)
+- Autosave debounce 1500ms + indicateur Saving/Saved
+- Versioning automatique (debounce 60s, restauration)
+- Recherche full-text ILIKE (titre + contenu)
+- Soft delete, archive, favoris
+- Organisation : dossiers + tags colorés
+
+### Collaboration temps réel (bonus)
+- Socket.io + WebSocket gateway NestJS
+- Curseurs live avec couleur et nom (extension ProseMirror)
+- Synchronisation permissions READ/WRITE en temps réel
+- Notification si note supprimée ou accès révoqué
+
+### Infrastructure
+- K3s 3 nœuds + HPA autoscaling
+- Let's Encrypt SSL (renouvellement automatique)
+- UFW pare-feu (ports 22, 80, 443 uniquement)
+- Backup PostgreSQL quotidien 2h (CronJob K8s, politique 3-2-1)
+
+---
+
+## Déploiement K3s
+
+### Prérequis VPS
+- 3 VPS Ubuntu 22.04
+- Docker installé sur chaque nœud
 - Accès SSH entre les nœuds
-- `openssl` pour le certificat TLS auto-signé
-- Images Docker disponibles sur Docker Hub : `bamara3/backend-app:latest`, `bamara3/frontend-app:latest`
 
----
-
-## Installation du cluster K3s
-
-### 1. Master
+### Installation K3s
 
 ```bash
+# Master
 curl -sfL https://get.k3s.io | sh -
-# Récupérer le token pour les workers
 cat /var/lib/rancher/k3s/server/node-token
-# Vérifier
-kubectl get nodes
+
+# Workers (remplacer MASTER_IP et NODE_TOKEN)
+curl -sfL https://get.k3s.io | \
+  K3S_URL=https://<MASTER_IP>:6443 \
+  K3S_TOKEN=<NODE_TOKEN> sh -
 ```
 
-### 2. Workers (répéter sur chaque worker)
+### Créer les secrets (à faire une seule fois)
 
 ```bash
-# Remplacer MASTER_IP et NODE_TOKEN
-curl -sfL https://get.k3s.io | K3S_URL=https://<MASTER_IP>:6443 K3S_TOKEN=<NODE_TOKEN> sh -
+# Copier les exemples
+cp k8s/20-secrets/app-secret.yaml.example k8s/20-secrets/app-secret.yaml
+cp k8s/20-secrets/db-secret.yaml.example k8s/20-secrets/db-secret.yaml
+
+# Remplir les valeurs en base64 :
+echo -n "votre_secret" | base64
+
+# Appliquer
+sudo kubectl apply -f k8s/20-secrets/
 ```
 
-### 3. Validation
-
-```bash
-kubectl get nodes
-# Attendu : 1 master Ready + 2 workers Ready
-```
-
----
-
-## Déploiement de l'application
-
-### Déploiement automatique (script)
+### Déploiement complet
 
 ```bash
 chmod +x scripts/deploy.sh
 ./scripts/deploy.sh
 ```
 
-### Déploiement manuel (étape par étape)
+### Vérification
 
 ```bash
-# 1. Namespace
-kubectl apply -f k8s/00-namespace/namespace.yaml
-
-# 2. ConfigMap
-kubectl apply -f k8s/10-config/app-configmap.yaml
-
-# 3. Secrets
-kubectl apply -f k8s/20-secrets/db-secret.yaml
-
-# 4. Base de données (StatefulSet + PVC)
-kubectl apply -f k8s/30-db/postgres.yaml
-kubectl rollout status statefulset/postgres -n cluster-project
-
-# 5. Backend (2 replicas)
-kubectl apply -f k8s/40-backend/backend.yaml
-kubectl rollout status deployment/backend -n cluster-project
-
-# 6. Frontend (3 replicas)
-kubectl apply -f k8s/50-frontend/frontend.yaml
-kubectl rollout status deployment/frontend -n cluster-project
-
-# 7. Ingress
-kubectl apply -f k8s/60-ingress/ingress.yaml
-
-# 8. HPA (autoscaling)
-kubectl apply -f k8s/70-hpa/hpa.yaml
-
-# Vérification globale
-kubectl get all -n cluster-project
-kubectl get hpa -n cluster-project
+sudo kubectl get nodes
+sudo kubectl get pods -n cluster-project
+sudo kubectl get hpa -n cluster-project
+curl https://cinely.fr/api/health
 ```
 
 ---
 
-## Persistance des données
+## CI/CD
 
-La base de données utilise un **PersistentVolumeClaim** (5 Gi, `local-path`) monté sur `/var/lib/postgresql/data`.
+Pipeline GitHub Actions déclenché sur chaque push `main` :
 
-**Test de persistance :**
-
-```bash
-# Supprimer le pod PostgreSQL
-kubectl delete pod -l app=postgres -n cluster-project
-
-# K3s recrée automatiquement le pod (StatefulSet)
-kubectl get pods -n cluster-project -w
-
-# Vérifier que les données sont intactes
-kubectl exec -it <nouveau-pod-postgres> -n cluster-project -- psql -U appuser -d appdb -c "\dt"
 ```
-
-> Capture : `docs/screenshots/Test-persistance.png`
-
----
-
-## Sécurité
-
-### Secrets Kubernetes
-
-Les mots de passe sont stockés dans un **Secret** K8s (encodé base64), jamais en clair dans les Deployments :
-
-```bash
-kubectl get secret db-secret -n cluster-project
-kubectl describe secret db-secret -n cluster-project
-```
-
-### HTTPS (certificat auto-signé)
-
-```bash
-# Générer le certificat TLS auto-signé
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout tls.key -out tls.crt \
-  -subj "/CN=app.local/O=cluster-project"
-
-# Créer le Secret TLS dans K8s
-kubectl create secret tls app-tls \
-  --cert=tls.crt --key=tls.key \
-  -n cluster-project
-
-# Vérifier
-kubectl get secret app-tls -n cluster-project
-```
-
-Configurer `/etc/hosts` (poste local) :
-
-```text
-<MASTER_IP>  app.local
-```
-
-Accéder à l'application : `https://app.local`
-
-> Capture : `docs/screenshots/Test-url-https.png`
-
----
-
-## Exposition réseau
-
-L'**Ingress Traefik** (intégré à K3s) route le trafic :
-
-| Route   | Service   | Port |
-|---------|-----------|------|
-| `/`     | frontend  | 80   |
-| `/api`  | backend   | 3000 |
-
-```bash
-kubectl get ingress -n cluster-project
-kubectl get svc -n cluster-project
+push → main
+  ├── Tests unitaires (Jest — 59 tests)
+  ├── Tests fonctionnels (Supertest — 26 tests)
+  ├── npm audit (high/critical)
+  ├── Build Docker backend  → bamara3/backend-app:sha
+  ├── Build Docker frontend → bamara3/frontend-app:sha
+  └── kubectl set image → rolling update K3s (0 downtime)
 ```
 
 ---
 
-## Haute disponibilité
+## Observabilité
 
-### Scaling manuel
-
-```bash
-# Scaler le frontend à 5 replicas
-kubectl scale deployment frontend --replicas=5 -n cluster-project
-
-# Scaler le backend à 4 replicas
-kubectl scale deployment backend --replicas=4 -n cluster-project
-
-# Vérifier
-kubectl get pods -n cluster-project
-```
-
-> Capture : `docs/screenshots/Test-scale.png`
-
-### Autoscaling horizontal (HPA) — Bonus
-
-K3s intègre `metrics-server` par défaut. Les HPA surveillent CPU et mémoire et ajustent automatiquement le nombre de replicas.
-
-| Deployment | Min | Max | CPU seuil | Mémoire seuil |
-|------------|-----|-----|-----------|---------------|
-| backend    | 2   | 6   | 70 %      | 80 %          |
-| frontend   | 3   | 9   | 70 %      | 80 %          |
-
-```bash
-# Vérifier que metrics-server est actif
-kubectl get pods -n kube-system | grep metrics-server
-
-# Appliquer les HPA
-kubectl apply -f k8s/70-hpa/hpa.yaml
-
-# Observer l'état des HPA
-kubectl get hpa -n cluster-project
-
-# Surveiller en direct (scale-up lors de charge)
-kubectl get hpa -n cluster-project -w
-```
-
-**Simuler une charge pour déclencher le scale-up :**
-
-```bash
-# Lancer un pod de charge temporaire vers le backend
-kubectl run load-test --image=busybox --rm -it --restart=Never \
-  -n cluster-project -- /bin/sh -c \
-  "while true; do wget -q -O- http://backend:3000/api; done"
-
-# Dans un autre terminal, observer le scale automatique
-kubectl get hpa -n cluster-project -w
-kubectl get pods -n cluster-project -w
-```
-
-Quand la charge s'arrête, le HPA réduit automatiquement les replicas après ~5 min (cooldown par défaut).
-
-### Test de tolérance aux pannes
-
-```bash
-# Supprimer un pod backend — K3s le recrée automatiquement
-kubectl delete pod -l app=backend -n cluster-project --grace-period=0
-
-# Observer la récupération automatique
-kubectl get pods -n cluster-project -w
-```
-
-> Captures : `docs/screenshots/Test-auto-recovery.png`, `docs/screenshots/Test-auto-recovery-mac.png`
+| Outil | URL | Usage |
+|-------|-----|-------|
+| Uptime Kuma | https://uptime.cinely.fr | État des services |
+| GlitchTip | https://glitchtip.cinely.fr | Signalement erreurs |
+| Matomo | https://matomo.cinely.fr | Analytics RGPD |
+| Health | https://cinely.fr/api/health | Liveness probe |
 
 ---
 
-## Nettoyage
+## Conformité sujet
 
-```bash
-chmod +x scripts/cleanup.sh
-./scripts/cleanup.sh
-# Supprime le namespace cluster-project et toutes ses ressources
-```
-
----
-
-## Structure du dépôt
-
-```text
-cluster-project/
-├── apps/
-│   ├── backend/
-│   │   ├── Dockerfile
-│   │   ├── package.json
-│   │   └── server.js
-│   └── frontend/
-│       ├── Dockerfile
-│       └── index.html
-├── k8s/
-│   ├── 00-namespace/namespace.yaml
-│   ├── 10-config/app-configmap.yaml
-│   ├── 20-secrets/db-secret.yaml
-│   ├── 30-db/postgres.yaml
-│   ├── 40-backend/backend.yaml
-│   ├── 50-frontend/frontend.yaml
-│   ├── 60-ingress/ingress.yaml
-│   └── 70-hpa/hpa.yaml
-├── docs/
-│   └── screenshots/
-├── scripts/
-│   ├── deploy.sh
-│   └── cleanup.sh
-└── README.md
-```
+| Critère | Statut |
+|---------|--------|
+| Inscription / Connexion / Reset mdp | ✅ |
+| Mot de passe fort (CNIL) | ✅ |
+| Blocage tentatives (5 → 15min) | ✅ |
+| Renouvellement mdp 60 jours | ✅ |
+| Docker + VPS | ✅ |
+| Pare-feu UFW | ✅ |
+| Domaine public + SSL Let's Encrypt | ✅ |
+| IaC (Dockerfile, docker-compose) | ✅ |
+| Architecture maintenable | ✅ Clean Architecture NestJS |
+| Responsive design | ✅ Tailwind CSS |
+| Tests unitaires | ✅ 59 tests Jest |
+| Tests fonctionnels | ✅ 26 tests Supertest |
+| Tests E2E | ✅ Playwright |
+| Uptime Kuma | ✅ |
+| GlitchTip (Sentry) | ✅ |
+| Matomo analytics | ✅ |
+| Backup 3-2-1 | ✅ CronJob K8s |
+| Pages légales (CGU, Privacy, Cookies) | ✅ |
+| SEO (robots.txt, sitemap, OG) | ✅ |
+| CI/CD GitHub Actions | ✅ |
+| **BONUS** 2FA TOTP sans librairie | ✅ |
+| **BONUS** Collaboration WebSocket | ✅ |
+| **BONUS** Cluster K3s auto-hébergé | ✅ |
+| **BONUS** HPA autoscaling | ✅ |
 
 ---
 
-## Barème couvert
+## Contributeurs
 
-| Critère | Points |
-| --- | --- |
-| Cluster K3s (1 master + 2 workers) | 2/2 |
-| Deploiement (front x3, back x2, BDD) | 5/5 |
-| Persistance (PVC, StatefulSet) | 2/2 |
-| Securite (Secret K8s + HTTPS TLS) | 2/2 |
-| Exposition (Traefik Ingress + DNS) | 2/2 |
-| Documentation & scripts | 2/2 |
-| **Total** | **15/15** |
-
-### Rapport des bonus implémentés
-
-#### Bonus 1 — Resource Requests & Limits / QoS (+1)
-
-Fichiers : `k8s/40-backend/backend.yaml`, `k8s/50-frontend/frontend.yaml`
-
-Chaque conteneur déclare des `requests` (garantie CPU/RAM) et des `limits` (plafond) :
-
-| Composant | CPU request | CPU limit | RAM request | RAM limit |
-| --- | --- | --- | --- | --- |
-| Backend | 50m | 200m | 64Mi | 256Mi |
-| Frontend | 25m | 150m | 32Mi | 128Mi |
-
-Cela place les pods en QoS **Burstable** et protège les nœuds contre la surconsommation.
-
-#### Bonus 2 — Node Affinity / BDD épinglée sur le master (+1)
-
-Fichier : `k8s/30-db/postgres.yaml`
-
-Le StatefulSet PostgreSQL utilise `preferredDuringSchedulingIgnoredDuringExecution` avec le label `node-role.kubernetes.io/master` pour privilégier le nœud master. Cela garantit que la base de données tourne sur le nœud le plus stable du cluster tout en restant portable sur n'importe quel cluster.
-
-#### Bonus 3 — Autoscaling horizontal HPA (+1)
-
-Fichier : `k8s/70-hpa/hpa.yaml`
-
-Deux HPA surveillent CPU et mémoire en temps réel via `metrics-server` (intégré K3s) :
-
-| Deployment | Min replicas | Max replicas | Seuil CPU | Seuil RAM |
-| --- | --- | --- | --- | --- |
-| backend | 2 | 6 | 70 % | 80 % |
-| frontend | 3 | 9 | 70 % | 80 % |
-
-**Preuve en production :** sous charge (`busybox` boucle infinie sur `/api`), le CPU backend est monté à 176 % → le HPA a automatiquement scalé de 2 à 6 replicas en moins de 60 secondes. Après arrêt de la charge, retour à 2 replicas après le cooldown de 5 minutes.
-
-Capture : `docs/screenshots/Metriques.png`
-
----
-
-## Captures d'écran
-
-### Démarrage initial des pods
-
-![Pods ContainerCreating](docs/screenshots/Pods-ContainerCreating.png)
-
-### État final du cluster
-
-![Etat final](docs/screenshots/Test-etat-final.png)
-
-### Scale up frontend / backend
-
-![Scale](docs/screenshots/Test-scale.png)
-
-### Auto-recovery — pod supprimé et recréé automatiquement
-
-![Auto-recovery](docs/screenshots/Test-auto-recovery.png)
-
-![Auto-recovery mac](docs/screenshots/Test-auto-recovery-mac.png)
-
-### Persistance — données intactes après suppression du pod PostgreSQL
-
-![Persistance](docs/screenshots/Test-persistance.png)
-
-### HTTPS — accès via app.local
-
-![HTTPS](docs/screenshots/Test-url-https.png)
-
-### HPA — métriques autoscaling en temps réel
-
-![HPA Metriques](docs/screenshots/Metriques.png)
+- Bilal Amara
