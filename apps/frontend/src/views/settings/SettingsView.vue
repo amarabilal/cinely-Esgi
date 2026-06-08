@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import { useSettingsStore } from '@/stores/settings.store';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
-const router = useRouter();
 const store = useSettingsStore();
 
 const activeTab = ref<'profile' | 'security' | 'sessions'>('profile');
@@ -120,113 +120,102 @@ function formatDate(dateStr: string) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4">
-      <button @click="router.push('/notes')" class="text-gray-400 hover:text-gray-600 transition-colors">
-        ← Notes
-      </button>
-      <h1 class="text-lg font-semibold text-gray-900">Settings</h1>
-      <div class="ml-auto">
-        <button @click="router.push('/dashboard')"
-          class="text-sm text-primary-600 hover:text-primary-800 transition-colors">
-          Dashboard
-        </button>
-      </div>
-    </div>
+  <div class="h-full overflow-y-auto bg-background text-foreground">
+    <div class="mx-auto max-w-4xl px-6 py-8">
+      <!-- Page header -->
+      <header class="mb-8">
+        <p class="font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Account</p>
+        <h1 class="mt-1 text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
+      </header>
 
-    <div class="max-w-2xl mx-auto py-8 px-4">
       <!-- Tabs -->
-      <div class="flex gap-1 mb-8 bg-gray-100 rounded-xl p-1">
+      <div class="flex gap-1 mb-8 bg-muted rounded-xl p-1 max-w-md">
         <button v-for="[key, label] in [['profile', 'Profile'], ['security', 'Security'], ['sessions', 'Sessions']]"
           :key="key"
           @click="activeTab = key as any"
           class="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
-          :class="activeTab === key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'">
+          :class="activeTab === key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">
           {{ label }}
         </button>
       </div>
 
       <!-- Profile Tab -->
-      <div v-if="activeTab === 'profile'" class="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-        <h2 class="text-base font-semibold text-gray-900">Personal Information</h2>
-        <p v-if="store.profile" class="text-sm text-gray-500">{{ store.profile.email }}</p>
+      <div v-if="activeTab === 'profile'" class="bg-card border border-border rounded-xl p-6 space-y-4">
+        <h2 class="text-base font-semibold text-foreground">Personal Information</h2>
+        <p v-if="store.profile" class="text-sm text-muted-foreground">{{ store.profile.email }}</p>
 
         <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">First name</label>
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-foreground">First name</label>
             <input v-model="firstName" type="text"
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Last name</label>
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-foreground">Last name</label>
             <input v-model="lastName" type="text"
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
           </div>
         </div>
 
-        <p v-if="profileSuccess" class="text-sm text-green-600">{{ profileSuccess }}</p>
-        <p v-if="profileError" class="text-sm text-red-600">{{ profileError }}</p>
+        <p v-if="profileSuccess" class="text-sm text-primary">{{ profileSuccess }}</p>
+        <p v-if="profileError" class="text-sm text-destructive">{{ profileError }}</p>
 
-        <button @click="saveProfile" :disabled="profileLoading"
-          class="bg-primary-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-primary-700 disabled:opacity-50 transition-colors">
+        <Button :disabled="profileLoading" @click="saveProfile">
           {{ profileLoading ? 'Saving…' : 'Save changes' }}
-        </button>
+        </Button>
       </div>
 
       <!-- Security Tab -->
       <div v-if="activeTab === 'security'" class="space-y-6">
         <!-- Change Password -->
-        <div class="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-          <h2 class="text-base font-semibold text-gray-900">Change Password</h2>
+        <div class="bg-card border border-border rounded-xl p-6 space-y-4">
+          <h2 class="text-base font-semibold text-foreground">Change Password</h2>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Current password</label>
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-foreground">Current password</label>
             <input v-model="currentPassword" type="password"
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">New password</label>
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-foreground">New password</label>
             <input v-model="newPassword" type="password" minlength="8"
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
           </div>
 
-          <p v-if="passwordSuccess" class="text-sm text-green-600">{{ passwordSuccess }}</p>
-          <p v-if="passwordError" class="text-sm text-red-600">{{ passwordError }}</p>
+          <p v-if="passwordSuccess" class="text-sm text-primary">{{ passwordSuccess }}</p>
+          <p v-if="passwordError" class="text-sm text-destructive">{{ passwordError }}</p>
 
-          <button @click="changePassword" :disabled="passwordLoading"
-            class="bg-primary-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-primary-700 disabled:opacity-50 transition-colors">
+          <Button :disabled="passwordLoading" @click="changePassword">
             {{ passwordLoading ? 'Updating…' : 'Update password' }}
-          </button>
+          </Button>
         </div>
 
         <!-- 2FA -->
-        <div class="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+        <div class="bg-card border border-border rounded-xl p-6 space-y-4">
           <div class="flex items-center justify-between">
             <div>
-              <h2 class="text-base font-semibold text-gray-900">Two-Factor Authentication</h2>
-              <p class="text-sm text-gray-500 mt-0.5">Add an extra layer of security to your account.</p>
+              <h2 class="text-base font-semibold text-foreground">Two-Factor Authentication</h2>
+              <p class="text-sm text-muted-foreground mt-0.5">Add an extra layer of security to your account.</p>
             </div>
-            <span class="text-xs px-2 py-1 rounded-full font-medium"
-              :class="store.profile?.totpEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
+            <Badge :variant="store.profile?.totpEnabled ? 'default' : 'secondary'">
               {{ store.profile?.totpEnabled ? 'Enabled' : 'Disabled' }}
-            </span>
+            </Badge>
           </div>
 
-          <p v-if="totpSuccess" class="text-sm text-green-600">{{ totpSuccess }}</p>
+          <p v-if="totpSuccess" class="text-sm text-primary">{{ totpSuccess }}</p>
 
           <!-- Recovery codes (shown once after enabling) -->
-          <div v-if="recoveryCodes.length > 0" class="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
-            <p class="text-sm font-semibold text-amber-800">Save your recovery codes</p>
-            <p class="text-xs text-amber-700">Store these codes safely. Each code can only be used once if you lose access to your authenticator app.</p>
+          <div v-if="recoveryCodes.length > 0" class="bg-muted border border-border rounded-xl p-4 space-y-3">
+            <p class="text-sm font-semibold text-foreground">Save your recovery codes</p>
+            <p class="text-xs text-muted-foreground">Store these codes safely. Each code can only be used once if you lose access to your authenticator app.</p>
             <div class="grid grid-cols-2 gap-2">
               <code v-for="code in recoveryCodes" :key="code"
-                class="bg-white border border-amber-200 rounded px-3 py-1.5 text-xs font-mono text-amber-900 text-center">
+                class="bg-background border border-border rounded px-3 py-1.5 text-xs font-mono text-foreground text-center">
                 {{ code }}
               </code>
             </div>
             <button @click="recoveryCodes = []"
-              class="text-xs text-amber-600 hover:text-amber-800 underline">
+              class="text-xs text-muted-foreground hover:text-foreground underline">
               I have saved my codes
             </button>
           </div>
@@ -234,36 +223,27 @@ function formatDate(dateStr: string) {
           <!-- Setup flow -->
           <template v-if="!store.profile?.totpEnabled">
             <div v-if="totpStep === 'idle'">
-              <button @click="startTotpSetup"
-                class="bg-primary-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-primary-700 transition-colors">
-                Enable 2FA
-              </button>
+              <Button @click="startTotpSetup">Enable 2FA</Button>
             </div>
 
             <div v-if="totpStep === 'setup'" class="space-y-4">
-              <p class="text-sm text-gray-600">
+              <p class="text-sm text-muted-foreground">
                 Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.),
                 then enter the 6-digit code to confirm.
               </p>
               <div class="flex justify-center">
-                <img :src="qrDataUrl" alt="QR Code" class="w-48 h-48 border border-gray-200 rounded-lg" />
+                <img :src="qrDataUrl" alt="QR Code" class="w-48 h-48 border border-border rounded-lg" />
               </div>
-              <p class="text-xs text-gray-400 text-center break-all">Manual entry key: {{ totpSecret }}</p>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Verification code</label>
+              <p class="text-xs text-muted-foreground text-center break-all">Manual entry key: {{ totpSecret }}</p>
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-foreground">Verification code</label>
                 <input v-model="totpCode" type="text" maxlength="6" placeholder="000000"
-                  class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                  class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-center tracking-widest shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
               </div>
-              <p v-if="totpError" class="text-sm text-red-600">{{ totpError }}</p>
+              <p v-if="totpError" class="text-sm text-destructive">{{ totpError }}</p>
               <div class="flex gap-2">
-                <button @click="enableTotp"
-                  class="flex-1 bg-primary-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-primary-700 transition-colors">
-                  Confirm & Enable
-                </button>
-                <button @click="cancelTotpSetup"
-                  class="flex-1 border border-gray-300 text-gray-600 rounded-lg py-2 text-sm font-medium hover:bg-gray-50 transition-colors">
-                  Cancel
-                </button>
+                <Button class="flex-1" @click="enableTotp">Confirm &amp; Enable</Button>
+                <Button variant="outline" class="flex-1" @click="cancelTotpSetup">Cancel</Button>
               </div>
             </div>
           </template>
@@ -271,38 +251,34 @@ function formatDate(dateStr: string) {
           <!-- Disable flow -->
           <template v-if="store.profile?.totpEnabled">
             <div class="space-y-3">
-              <p class="text-sm text-gray-600">Enter your current 2FA code to disable it.</p>
+              <p class="text-sm text-muted-foreground">Enter your current 2FA code to disable it.</p>
               <input v-model="disableCode" type="text" maxlength="6" placeholder="000000"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-primary-500" />
-              <p v-if="disableError" class="text-sm text-red-600">{{ disableError }}</p>
-              <button @click="disableTotp"
-                class="bg-red-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-red-700 transition-colors">
-                Disable 2FA
-              </button>
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-center tracking-widest shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
+              <p v-if="disableError" class="text-sm text-destructive">{{ disableError }}</p>
+              <Button variant="destructive" @click="disableTotp">Disable 2FA</Button>
             </div>
           </template>
         </div>
       </div>
 
       <!-- Sessions Tab -->
-      <div v-if="activeTab === 'sessions'" class="bg-white rounded-2xl shadow-sm p-6 space-y-4">
-        <h2 class="text-base font-semibold text-gray-900">Active Sessions</h2>
-        <p class="text-sm text-gray-500">These are the devices currently signed in to your account.</p>
+      <div v-if="activeTab === 'sessions'" class="bg-card border border-border rounded-xl p-6 space-y-4">
+        <h2 class="text-base font-semibold text-foreground">Active Sessions</h2>
+        <p class="text-sm text-muted-foreground">These are the devices currently signed in to your account.</p>
 
-        <div v-if="store.sessions.length === 0" class="text-sm text-gray-400 text-center py-4">
+        <div v-if="store.sessions.length === 0" class="text-sm text-muted-foreground text-center py-4">
           No active sessions found.
         </div>
 
         <div v-for="session in store.sessions" :key="session.id"
-          class="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+          class="flex items-center justify-between py-3 border-b border-border last:border-0">
           <div>
-            <div class="text-sm text-gray-700 font-medium">Session</div>
-            <div class="text-xs text-gray-400">Created {{ formatDate(session.createdAt) }} · Expires {{ formatDate(session.expiresAt) }}</div>
+            <div class="text-sm text-foreground font-medium">Session</div>
+            <div class="text-xs text-muted-foreground">Created {{ formatDate(session.createdAt) }} · Expires {{ formatDate(session.expiresAt) }}</div>
           </div>
-          <button @click="store.revokeSession(session.id)"
-            class="text-xs text-red-500 hover:text-red-700 transition-colors">
+          <Button variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="store.revokeSession(session.id)">
             Revoke
-          </button>
+          </Button>
         </div>
       </div>
     </div>

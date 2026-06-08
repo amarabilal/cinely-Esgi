@@ -45,21 +45,22 @@ const router = createRouter({
       component: () => import('@/views/auth/TwoFactorView.vue'),
     },
 
-    // App pages (auth required)
+    // App pages (auth required) — nested under the persistent AppLayout shell
+    // (top bar + collapsible sidebar + command palette + toaster).
     {
       path: '/notes',
-      component: () => import('@/views/notes/NotesView.vue'),
+      component: () => import('@/components/app/AppLayout.vue'),
       meta: { requiresAuth: true },
-    },
-    {
-      path: '/dashboard',
-      component: () => import('@/views/notes/DashboardView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/settings',
-      component: () => import('@/views/settings/SettingsView.vue'),
-      meta: { requiresAuth: true },
+      children: [
+        { path: '', name: 'notes', component: () => import('@/views/notes/NotesOverviewView.vue') },
+        { path: 'archived', name: 'notes-archived', component: () => import('@/views/notes/NotesOverviewView.vue') },
+        { path: 'search', name: 'notes-search', component: () => import('@/views/notes/SearchView.vue') },
+        { path: ':id', name: 'note-editor', component: () => import('@/views/notes/NoteEditorView.vue') },
+        // Dashboard + Settings live inside the same shell so they inherit the
+        // top bar + sidebar + command palette (absolute paths keep their URLs).
+        { path: '/dashboard', name: 'dashboard', component: () => import('@/views/notes/DashboardView.vue') },
+        { path: '/settings', name: 'settings', component: () => import('@/views/settings/SettingsView.vue') },
+      ],
     },
   ],
 });

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, RouterLink } from 'vue-router';
 import { useAuthStore } from '@/stores/auth.store';
+import AuthLayout from '@/components/layout/AuthLayout.vue';
+import { Button } from '@/components/ui/button';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -39,51 +41,48 @@ async function submit() {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-sm p-8">
-      <h1 class="text-2xl font-bold text-gray-900 mb-1">Sign in</h1>
-      <p class="text-sm text-gray-500 mb-6">
-        No account?
-        <router-link to="/register" class="text-primary-600 hover:underline">Create one</router-link>
-      </p>
+  <AuthLayout title="Sign in">
+    <template #subtitle>
+      No account?
+      <RouterLink to="/register" class="font-medium text-primary hover:underline">Create one</RouterLink>
+    </template>
 
-      <form @submit.prevent="submit" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-          <input
-            v-model="email"
-            type="email"
-            required
-            autocomplete="email"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
+    <form @submit.prevent="submit" class="space-y-4">
+      <div class="space-y-1.5">
+        <label for="email" class="text-sm font-medium text-foreground">Email</label>
+        <input
+          id="email"
+          v-model="email"
+          type="email"
+          required
+          autocomplete="email"
+          class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-          <input
-            v-model="password"
-            type="password"
-            required
-            autocomplete="current-password"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
+      <div class="space-y-1.5">
+        <label for="password" class="text-sm font-medium text-foreground">Password</label>
+        <input
+          id="password"
+          v-model="password"
+          type="password"
+          required
+          autocomplete="current-password"
+          class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        />
+      </div>
 
-        <div class="flex justify-end">
-          <router-link to="/forgot-password" class="text-xs text-primary-600 hover:underline">Forgot password?</router-link>
-        </div>
+      <div class="flex justify-end">
+        <RouterLink to="/forgot-password" class="text-xs text-muted-foreground transition-colors hover:text-foreground">
+          Forgot password?
+        </RouterLink>
+      </div>
 
-        <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+      <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
 
-        <button
-          type="submit"
-          :disabled="loading"
-          class="w-full bg-primary-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-primary-700 disabled:opacity-50 transition-colors"
-        >
-          {{ loading ? 'Signing in…' : 'Sign in' }}
-        </button>
-      </form>
-    </div>
-  </div>
+      <Button type="submit" :disabled="loading" class="w-full">
+        {{ loading ? 'Signing in…' : 'Sign in' }}
+      </Button>
+    </form>
+  </AuthLayout>
 </template>

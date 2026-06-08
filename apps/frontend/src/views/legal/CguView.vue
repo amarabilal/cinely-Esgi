@@ -1,12 +1,13 @@
-<template>
-  <div class="min-h-screen bg-white">
-    <nav class="border-b border-gray-100 px-6 py-4 max-w-4xl mx-auto">
-      <router-link to="/" class="text-xl font-bold text-primary-600">Notes</router-link>
-    </nav>
+<script setup lang="ts">
+import { RouterLink } from 'vue-router';
+import PublicLayout from '@/components/layout/PublicLayout.vue';
+</script>
 
-    <div class="max-w-3xl mx-auto py-16 px-6 prose prose-gray">
+<template>
+  <PublicLayout>
+    <article class="prose prose-zinc dark:prose-invert mx-auto max-w-3xl px-6 py-12">
       <h1>Conditions Générales d'Utilisation</h1>
-      <p class="text-gray-500">Dernière mise à jour : 29 mai 2026</p>
+      <p class="text-muted-foreground">Dernière mise à jour : 29 mai 2026</p>
 
       <h2>1. Objet</h2>
       <p>Les présentes Conditions Générales d'Utilisation (CGU) régissent l'accès et l'utilisation de l'application Notes App (ci-après « le Service »). En vous inscrivant ou en utilisant le Service, vous acceptez sans réserve les présentes CGU.</p>
@@ -27,7 +28,7 @@
       </ul>
 
       <h2>5. Données personnelles</h2>
-      <p>Le traitement de vos données personnelles est décrit dans notre <router-link to="/legal/politique-confidentialite">Politique de confidentialité</router-link>.</p>
+      <p>Le traitement de vos données personnelles est décrit dans notre <RouterLink to="/legal/politique-confidentialite">Politique de confidentialité</RouterLink>.</p>
 
       <h2>6. Propriété intellectuelle</h2>
       <p>Le contenu que vous créez reste votre propriété. Vous accordez au Service une licence limitée pour stocker et afficher votre contenu dans le cadre du fonctionnement normal de l'application.</p>
@@ -39,7 +40,7 @@
       <p>Nous nous réservons le droit de modifier les présentes CGU à tout moment. Les utilisateurs seront informés par email en cas de modification substantielle.</p>
 
       <h2>9. Contact</h2>
-      <p>Pour toute question relative aux présentes CGU, contactez-nous via la <router-link to="/contact">page de contact</router-link>.</p>
-    </div>
-  </div>
+      <p>Pour toute question relative aux présentes CGU, contactez-nous via la <RouterLink to="/contact">page de contact</RouterLink>.</p>
+    </article>
+  </PublicLayout>
 </template>

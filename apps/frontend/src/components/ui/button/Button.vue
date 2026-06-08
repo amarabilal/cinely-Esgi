@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { RouterLink } from 'vue-router';
 import { cn } from '@/lib/utils';
 
 defineOptions({
@@ -10,6 +11,8 @@ const props = withDefaults(defineProps<{
   variant?: 'default' | 'secondary' | 'ghost' | 'outline' | 'destructive';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   type?: 'button' | 'submit' | 'reset';
+  /** When set, the button renders as a <RouterLink> to this route. */
+  to?: string;
 }>(), {
   variant: 'default',
   size: 'default',
@@ -33,8 +36,10 @@ const sizeClasses = computed(() => ({
 </script>
 
 <template>
-  <button
-    :type="type"
+  <component
+    :is="to ? RouterLink : 'button'"
+    :to="to"
+    :type="to ? undefined : type"
     v-bind="$attrs"
     :class="cn(
       'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
@@ -43,5 +48,5 @@ const sizeClasses = computed(() => ({
     )"
   >
     <slot />
-  </button>
+  </component>
 </template>

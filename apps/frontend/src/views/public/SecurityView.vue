@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import PublicLayout from '@/components/layout/PublicLayout.vue';
+
 const measures = [
   {
     category: 'Authentication',
@@ -45,45 +47,29 @@ const measures = [
 </script>
 
 <template>
-  <div class="min-h-screen bg-white">
-    <nav class="border-b border-gray-100 px-6 py-4 flex items-center gap-6 max-w-6xl mx-auto">
-      <router-link to="/" class="text-xl font-bold text-primary-600">Notes</router-link>
-      <router-link to="/features" class="text-sm text-gray-500 hover:text-gray-900">Features</router-link>
-      <div class="ml-auto flex gap-3">
-        <router-link to="/login" class="text-sm text-gray-600 hover:text-gray-900">Login</router-link>
-        <router-link to="/register"
-          class="bg-primary-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors">
-          Get started
-        </router-link>
-      </div>
-    </nav>
-
-    <div class="max-w-4xl mx-auto py-16 px-6">
-      <h1 class="text-4xl font-bold text-gray-900 mb-4">Security</h1>
-      <p class="text-lg text-gray-500 mb-16">
+  <PublicLayout>
+    <div class="mx-auto max-w-4xl px-6 py-16 sm:py-20">
+      <h1 class="text-4xl font-bold tracking-tight text-foreground">Security</h1>
+      <p class="mt-4 text-lg text-muted-foreground">
         Security is built into every layer of the application — from password hashing
         to infrastructure hardening and GDPR-compliant data handling.
       </p>
 
-      <div class="space-y-10">
+      <div class="mt-14 space-y-10">
         <div v-for="group in measures" :key="group.category">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ group.category }}</h2>
-          <div class="border border-gray-100 rounded-2xl divide-y divide-gray-50">
-            <div v-for="item in group.items" :key="item.label" class="px-6 py-4 flex flex-col sm:flex-row gap-2">
-              <span class="text-sm font-medium text-gray-800 w-52 shrink-0">{{ item.label }}</span>
-              <span class="text-sm text-gray-500">{{ item.detail }}</span>
+          <h2 class="mb-4 text-lg font-semibold text-foreground">{{ group.category }}</h2>
+          <div class="divide-y divide-border rounded-2xl border border-border bg-card">
+            <div
+              v-for="item in group.items"
+              :key="item.label"
+              class="flex flex-col gap-2 px-6 py-4 sm:flex-row"
+            >
+              <span class="w-52 shrink-0 text-sm font-medium text-foreground">{{ item.label }}</span>
+              <span class="text-sm text-muted-foreground">{{ item.detail }}</span>
             </div>
           </div>
         </div>
       </div>
     </div>
-
-    <footer class="border-t border-gray-100 py-6 px-6 text-center">
-      <div class="flex justify-center gap-6">
-        <router-link to="/legal/cgu" class="text-sm text-gray-400 hover:text-gray-600">CGU</router-link>
-        <router-link to="/legal/politique-confidentialite" class="text-sm text-gray-400 hover:text-gray-600">Privacy</router-link>
-        <router-link to="/contact" class="text-sm text-gray-400 hover:text-gray-600">Contact</router-link>
-      </div>
-    </footer>
-  </div>
+  </PublicLayout>
 </template>

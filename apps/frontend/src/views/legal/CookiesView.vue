@@ -1,12 +1,13 @@
-<template>
-  <div class="min-h-screen bg-white">
-    <nav class="border-b border-gray-100 px-6 py-4 max-w-4xl mx-auto">
-      <router-link to="/" class="text-xl font-bold text-primary-600">Notes</router-link>
-    </nav>
+<script setup lang="ts">
+import { RouterLink } from 'vue-router';
+import PublicLayout from '@/components/layout/PublicLayout.vue';
+</script>
 
-    <div class="max-w-3xl mx-auto py-16 px-6 prose prose-gray">
+<template>
+  <PublicLayout>
+    <article class="prose prose-zinc dark:prose-invert mx-auto max-w-3xl px-6 py-12">
       <h1>Politique de Cookies</h1>
-      <p class="text-gray-500">Dernière mise à jour : 29 mai 2026</p>
+      <p class="text-muted-foreground">Dernière mise à jour : 29 mai 2026</p>
 
       <h2>1. Qu'est-ce qu'un cookie ?</h2>
       <p>Un cookie est un petit fichier texte déposé sur votre terminal (ordinateur, smartphone) lors de la visite d'un site web. Il permet de mémoriser des informations entre les visites.</p>
@@ -43,7 +44,7 @@
       <p>Vous pouvez également configurer votre navigateur pour refuser tous les cookies. Cependant, certaines fonctionnalités du Service pourraient ne plus fonctionner correctement.</p>
 
       <h2>5. Contact</h2>
-      <p>Pour toute question relative à notre utilisation des cookies, contactez-nous via la <router-link to="/contact">page de contact</router-link>.</p>
-    </div>
-  </div>
+      <p>Pour toute question relative à notre utilisation des cookies, contactez-nous via la <RouterLink to="/contact">page de contact</RouterLink>.</p>
+    </article>
+  </PublicLayout>
 </template>

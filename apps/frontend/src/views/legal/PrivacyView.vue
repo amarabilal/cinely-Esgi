@@ -1,12 +1,13 @@
-<template>
-  <div class="min-h-screen bg-white">
-    <nav class="border-b border-gray-100 px-6 py-4 max-w-4xl mx-auto">
-      <router-link to="/" class="text-xl font-bold text-primary-600">Notes</router-link>
-    </nav>
+<script setup lang="ts">
+import { RouterLink } from 'vue-router';
+import PublicLayout from '@/components/layout/PublicLayout.vue';
+</script>
 
-    <div class="max-w-3xl mx-auto py-16 px-6 prose prose-gray">
+<template>
+  <PublicLayout>
+    <article class="prose prose-zinc dark:prose-invert mx-auto max-w-3xl px-6 py-12">
       <h1>Politique de Confidentialité</h1>
-      <p class="text-gray-500">Dernière mise à jour : 29 mai 2026</p>
+      <p class="text-muted-foreground">Dernière mise à jour : 29 mai 2026</p>
 
       <h2>1. Responsable du traitement</h2>
       <p>Notes App est responsable du traitement de vos données personnelles conformément au Règlement Général sur la Protection des Données (RGPD).</p>
@@ -41,16 +42,16 @@
         <li>Droit à la portabilité</li>
         <li>Droit d'opposition au traitement</li>
       </ul>
-      <p>Pour exercer ces droits, contactez-nous via la <router-link to="/contact">page de contact</router-link>.</p>
+      <p>Pour exercer ces droits, contactez-nous via la <RouterLink to="/contact">page de contact</RouterLink>.</p>
 
       <h2>6. Sécurité</h2>
       <p>Nous mettons en œuvre des mesures techniques appropriées pour protéger vos données : chiffrement en transit (HTTPS/TLS), hachage des mots de passe (Argon2id), authentification à deux facteurs, et audit de sécurité régulier.</p>
 
       <h2>7. Cookies</h2>
-      <p>Notre utilisation des cookies est décrite dans notre <router-link to="/legal/cookies">Politique de Cookies</router-link>.</p>
+      <p>Notre utilisation des cookies est décrite dans notre <RouterLink to="/legal/cookies">Politique de Cookies</RouterLink>.</p>
 
       <h2>8. Transferts hors UE</h2>
       <p>Vos données sont hébergées au sein de l'Union Européenne. Aucun transfert vers des pays tiers n'est effectué.</p>
-    </div>
-  </div>
+    </article>
+  </PublicLayout>
 </template>
