@@ -147,6 +147,8 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Install kubectl
         uses: azure/setup-kubectl@v3
         with:
