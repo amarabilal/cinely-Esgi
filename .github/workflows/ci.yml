@@ -158,6 +158,12 @@ jobs:
           echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
 
+      - name: Apply manifests
+        run: |
+          kubectl apply -f k8s/10-config/app-configmap.yaml -n cluster-project
+          kubectl apply -f k8s/40-backend/backend.yaml
+          kubectl apply -f k8s/50-frontend/frontend.yaml
+
       - name: Rolling update
         run: |
           kubectl set image deployment/backend \
