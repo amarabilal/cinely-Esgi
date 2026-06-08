@@ -82,4 +82,26 @@ export class NoteTypeOrmRepository implements INoteRepository {
       .orderBy('note.updated_at', 'DESC')
       .getMany();
   }
+
+  async searchSemantic(userId: string, embeddingJson: string): Promise<Note[]> {
+    const rows: Array<{ id: string }> = await this.repo.manager.query(
+      `SELECT id FROM notes
+       WHERE user_id = $1 AND is_deleted = false AND is_archived = false AND embedding IS NOT NULL
+       ORDER BY embedding::vector <=> $2::vector
+       LIMIT 20`,
+      [userId, embeddingJson],
+    );
+    if (rows.length === 0) return [];
+    const ids = rows.map(r => r.id);
+    const notes = await this.repo.createQueryBuilder('note')
+      .leftJoinAndSelect('note.tags', 'tag')
+      .where('note.id IN (:...ids)', { ids })
+      .getMany();
+    const order = new Map(rows.map((r, i) => [r.id, i]));
+    return notes.sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
+  }
+
+  async updateEmbedding(noteId: string, embeddingJson: string): Promise<void> {
+    await this.repo.update({ id: noteId }, { embedding: embeddingJson });
+  }
 }

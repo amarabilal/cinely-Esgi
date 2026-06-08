@@ -53,7 +53,8 @@ export const notesApi = {
   toggleArchive: (id: string) => client.patch<Note>(`/notes/${id}/archive`),
   addTag: (noteId: string, tagId: string) => client.post<Note>(`/notes/${noteId}/tags/${tagId}`),
   removeTag: (noteId: string, tagId: string) => client.delete<Note>(`/notes/${noteId}/tags/${tagId}`),
-  search: (q: string) => client.get<Note[]>('/notes/search', { params: { q } }),
+  search: (q: string, semantic = false) =>
+    client.get<Note[]>('/notes/search', { params: { q, ...(semantic ? { semantic: 'true' } : {}) } }),
   findSharedWithMe: () => client.get<Note[]>('/notes/shared'),
   getVersions: (id: string) => client.get<NoteVersion[]>(`/notes/${id}/versions`),
   restoreVersion: (noteId: string, versionId: string) =>

@@ -17,7 +17,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_DB: notesdb_test
           POSTGRES_USER: notesuser
@@ -62,6 +62,8 @@ jobs:
           MAIL_HOST: localhost
           MAIL_PORT: 1025
           NODE_ENV: test
+          ANTHROPIC_API_KEY: sk-ant-ci-placeholder-not-used-in-tests
+          OPENAI_API_KEY: sk-ci-placeholder-not-used-in-tests
 
   # ── Audit sécurité npm ────────────────────────────────────────
   audit:

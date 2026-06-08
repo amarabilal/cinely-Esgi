@@ -35,3 +35,7 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+# Dev-only scripts — never commit
+seed.js
+setup-git-history.sh

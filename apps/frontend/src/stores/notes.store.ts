@@ -158,9 +158,9 @@ export const useNotesStore = defineStore('notes', () => {
     tags.value = tags.value.filter((t) => t.id !== id);
   }
 
-  async function search(q: string) {
+  async function search(q: string, semantic = false) {
     if (!q.trim()) { searchResults.value = null; return; }
-    const { data } = await notesApi.search(q);
+    const { data } = await notesApi.search(q, semantic);
     searchResults.value = data;
   }
 

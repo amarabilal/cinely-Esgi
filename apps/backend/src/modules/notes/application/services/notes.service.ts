@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { INoteRepository, NOTE_REPOSITORY } from '../../domain/repositories/note.repository.interface';
@@ -8,6 +8,7 @@ import { Note } from '../../domain/entities/note.entity';
 import { User } from '../../../auth/domain/entities/user.entity';
 import { Tag } from '../../../tags/domain/entities/tag.entity';
 import { Folder } from '../../../folders/domain/entities/folder.entity';
+import { AiService } from '../../../ai/application/services/ai.service';
 import { CreateNoteDto } from '../dto/create-note.dto';
 import { UpdateNoteDto } from '../dto/update-note.dto';
 import { QueryNotesDto } from '../dto/query-notes.dto';
@@ -18,6 +19,8 @@ export type NoteWithPermission = Note & { sharedPermission?: 'READ' | 'WRITE' };
 
 @Injectable()
 export class NotesService {
+  private readonly logger = new Logger(NotesService.name);
+
   constructor(
     @Inject(NOTE_REPOSITORY) private readonly noteRepository: INoteRepository,
     @InjectRepository(NoteVersion) private readonly versionRepository: Repository<NoteVersion>,
@@ -25,6 +28,7 @@ export class NotesService {
     @InjectRepository(User) private readonly userRepository: Repository<User>,
     @InjectRepository(Tag) private readonly tagRepository: Repository<Tag>,
     @InjectRepository(Folder) private readonly folderRepository: Repository<Folder>,
+    private readonly aiService: AiService,
   ) {}
 
   findAll(userId: string, query: QueryNotesDto) {
@@ -38,6 +42,11 @@ export class NotesService {
 
   search(userId: string, q: string) {
     return this.noteRepository.search(userId, q);
+  }
+
+  async searchSemantic(userId: string, q: string) {
+    const embedding = await this.aiService.generateEmbedding(q);
+    return this.noteRepository.searchSemantic(userId, JSON.stringify(embedding));
   }
 
   async findOne(userId: string, id: string): Promise<NoteWithPermission> {
@@ -85,13 +94,15 @@ export class NotesService {
       const folder = await this.folderRepository.findOne({ where: { id: dto.folderId, userId } });
       if (!folder) throw new NotFoundException('Folder not found');
     }
-    return this.noteRepository.save({
+    const note = await this.noteRepository.save({
       userId,
       title: dto.title ?? '',
       content: dto.content ?? '',
       folderId: dto.folderId ?? null,
       tags: [],
     });
+    this.scheduleEmbedding(note.id, note.title, note.content);
+    return note;
   }
 
   async update(userId: string, id: string, dto: UpdateNoteDto) {
@@ -127,7 +138,11 @@ export class NotesService {
     }
 
     await this.noteRepository.update(ownerId, id, dto);
-    return this.noteRepository.findById(ownerId, id);
+    const updated = await this.noteRepository.findById(ownerId, id);
+    if (contentChanged && updated) {
+      this.scheduleEmbedding(id, updated.title, updated.content);
+    }
+    return updated;
   }
 
   async remove(userId: string, id: string) {
@@ -273,6 +288,14 @@ export class NotesService {
       recentNotes: recent,
       topTags,
     };
+  }
+
+  private scheduleEmbedding(noteId: string, title: string, content: string) {
+    const text = `${title} ${content}`;
+    this.aiService
+      .generateEmbedding(text)
+      .then(vec => this.noteRepository.updateEmbedding(noteId, JSON.stringify(vec)))
+      .catch(err => this.logger.warn(`Embedding failed for note ${noteId}: ${err.message}`));
   }
 
   private async saveVersionIfNeeded(noteId: string, title: string, content: string) {

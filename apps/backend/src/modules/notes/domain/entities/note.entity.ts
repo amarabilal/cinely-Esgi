@@ -34,6 +34,9 @@ export class Note {
   @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date | null;
 
+  @Column({ type: 'text', nullable: true })
+  embedding: string | null;
+
   @ManyToMany(() => Tag, { eager: true, cascade: false })
   @JoinTable({
     name: 'note_tags',

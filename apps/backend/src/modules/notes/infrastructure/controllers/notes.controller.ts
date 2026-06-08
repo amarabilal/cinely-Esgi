@@ -24,8 +24,13 @@ export class NotesController {
   ) {}
 
   @Get('search')
-  search(@CurrentUser() user: { sub: string }, @Query('q') q: string) {
+  search(
+    @CurrentUser() user: { sub: string },
+    @Query('q') q: string,
+    @Query('semantic') semantic?: string,
+  ) {
     if (!q?.trim()) return [];
+    if (semantic === 'true') return this.notesService.searchSemantic(user.sub, q.trim());
     return this.notesService.search(user.sub, q.trim());
   }
 

@@ -109,6 +109,16 @@ spec:
                 secretKeyRef:
                   name: app-secret
                   key: MAIL_PASS
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: ANTHROPIC_API_KEY
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: OPENAI_API_KEY
           # Chemin /api/health — global prefix 'api' défini dans main.ts
           readinessProbe:
             httpGet:

@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { NotesService } from './notes.service';
+import { AiService } from '../../../ai/application/services/ai.service';
 import { NOTE_REPOSITORY } from '../../domain/repositories/note.repository.interface';
 import { NoteVersion } from '../../domain/entities/note-version.entity';
 import { NoteShare } from '../../domain/entities/note-share.entity';
@@ -28,8 +29,10 @@ const mockNoteRepo = () => ({
   findAll: jest.fn(),
   findById: jest.fn(),
   search: jest.fn(),
+  searchSemantic: jest.fn(),
   save: jest.fn(),
   update: jest.fn(),
+  updateEmbedding: jest.fn().mockResolvedValue(undefined),
   softDelete: jest.fn(),
   addTag: jest.fn(),
   removeTag: jest.fn(),
@@ -70,6 +73,13 @@ describe('NotesService', () => {
         { provide: getRepositoryToken(User), useValue: mockRepo() },
         { provide: getRepositoryToken(Tag), useValue: { ...mockRepo(), manager: { query: jest.fn().mockResolvedValue([]) } } },
         { provide: getRepositoryToken(Folder), useValue: mockRepo() },
+        {
+          provide: AiService,
+          useValue: {
+            generateEmbedding: jest.fn().mockResolvedValue(new Array(1536).fill(0)),
+            suggestTitle: jest.fn().mockResolvedValue(''),
+          },
+        },
       ],
     }).compile();
 

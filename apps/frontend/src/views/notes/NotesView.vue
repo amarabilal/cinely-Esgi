@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useNotesStore } from '@/stores/notes.store';
 import { useNoteSync } from '@/composables/useNoteSync';
 import { RemoteCursorExtension, setCursors } from '@/composables/RemoteCursorExtension';
+import { aiApi } from '@/api/ai.api';
 import type { NoteQuery } from '@/api/notes.api';
 
 const router = useRouter();
@@ -35,6 +36,8 @@ const newTagName = ref('');
 const newTagColor = ref('#6366f1');
 const searchQuery = ref('');
 const searchTimer = ref<ReturnType<typeof setTimeout> | null>(null);
+const semanticSearch = ref(false);
+const isSuggestingTitle = ref(false);
 
 // Share panel
 const shareEmail = ref('');
@@ -258,11 +261,33 @@ function onSearchInput() {
   if (searchTimer.value) clearTimeout(searchTimer.value);
   searchTimer.value = setTimeout(async () => {
     if (searchQuery.value.trim()) {
-      await store.search(searchQuery.value.trim());
+      await store.search(searchQuery.value.trim(), semanticSearch.value);
     } else {
       store.clearSearch();
     }
   }, 300);
+}
+
+function toggleSemanticSearch() {
+  semanticSearch.value = !semanticSearch.value;
+  if (searchQuery.value.trim()) onSearchInput();
+}
+
+// ── AI suggest title ───────────────────────────────────────────
+async function suggestTitle() {
+  if (!store.currentNote || isSuggestingTitle.value) return;
+  const content = editor.value?.getHTML() ?? '';
+  if (!content || content === '<p></p>') return;
+  isSuggestingTitle.value = true;
+  try {
+    const { data } = await aiApi.suggestTitle(content);
+    if (data.title) {
+      titleInput.value = data.title;
+      scheduleSave(data.title, content);
+    }
+  } finally {
+    isSuggestingTitle.value = false;
+  }
 }
 
 // ── Actions ────────────────────────────────────────────────────
@@ -445,8 +470,17 @@ const sidebarLabel = computed(() => {
           <span class="text-sm font-semibold text-gray-800">{{ sidebarLabel }}</span>
           <span class="text-xs text-gray-400">{{ displayedNotes.length }}</span>
         </div>
-        <input v-if="activeFilter !== 'shared'" v-model="searchQuery" @input="onSearchInput" placeholder="Search…"
-          class="w-full text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-50" />
+        <div v-if="activeFilter !== 'shared'" class="flex items-center gap-1">
+          <input v-model="searchQuery" @input="onSearchInput" placeholder="Search…"
+            class="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 bg-gray-50" />
+          <button
+            @click="toggleSemanticSearch"
+            :title="semanticSearch ? 'Recherche sémantique active (cliquer pour désactiver)' : 'Activer la recherche sémantique (IA)'"
+            class="flex-shrink-0 text-base px-1.5 py-1 rounded border transition-colors"
+            :class="semanticSearch ? 'border-indigo-300 bg-indigo-50 text-indigo-600' : 'border-gray-200 text-gray-400 hover:border-indigo-300 hover:text-indigo-500'">
+            🧠
+          </button>
+        </div>
       </div>
 
       <div class="flex-1 overflow-y-auto">
@@ -557,6 +591,15 @@ const sidebarLabel = computed(() => {
                 </select>
               </div>
             </template>
+
+            <button
+              @click="suggestTitle"
+              :disabled="isSuggestingTitle || !store.canEdit"
+              :title="isSuggestingTitle ? 'Génération en cours…' : 'Suggérer un titre (IA)'"
+              class="text-xs px-2 py-1 rounded border transition-colors disabled:opacity-40"
+              :class="isSuggestingTitle ? 'border-yellow-300 text-yellow-600 bg-yellow-50' : 'border-gray-200 text-gray-500 hover:border-yellow-300 hover:text-yellow-600'">
+              {{ isSuggestingTitle ? '…' : '✨' }}
+            </button>
 
             <button @click="toggleVersions"
               class="text-xs px-2 py-1 rounded border transition-colors"

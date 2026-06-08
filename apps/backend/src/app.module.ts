@@ -10,6 +10,7 @@ import { NotesModule } from './modules/notes/notes.module';
 import { FoldersModule } from './modules/folders/folders.module';
 import { TagsModule } from './modules/tags/tags.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { AiModule } from './modules/ai/ai.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -23,6 +24,7 @@ import { HealthController } from './health/health.controller';
     FoldersModule,
     TagsModule,
     SettingsModule,
+    AiModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
