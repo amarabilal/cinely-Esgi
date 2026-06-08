@@ -1,3 +1,450 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 4%;
+    --primary: 263 70% 50%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 10%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 6% 10%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 263 70% 50%;
+    --radius: 0.5rem;
+    --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+
+  .dark {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 6%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 263 70% 60%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 12%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 240 4% 12%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 263 70% 60%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    background: hsl(var(--background));
+    /* Smooth dark/light theme transitions on the chrome layer. */
+    transition:
+      background-color 250ms ease,
+      color 250ms ease;
+  }
+
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    letter-spacing: 0;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    transition:
+      background-color 250ms ease,
+      color 250ms ease;
+  }
+
+  /*
+   * Animate the most common surfaces during a theme switch.
+   * We scope the transition to known token-driven properties only,
+   * so we don't tax unrelated transitions (e.g. hover, active scale).
+   */
+  *, *::before, *::after {
+    transition-property:
+      background-color,
+      border-color,
+      color,
+      fill,
+      stroke,
+      box-shadow;
+    transition-timing-function: ease;
+    transition-duration: 200ms;
+  }
+
+  /*
+   * Theme-swap synchronization.
+   * When the user toggles dark/light, useColorMode adds .theme-switching
+   * on <html> for ~2 frames. This rule kills every transition (ours,
+   * Tailwind's `transition-colors`, shadcn primitives, animations) so
+   * the entire UI swaps tokens atomically instead of producing a
+   * desynchronized "wave" of color changes.
+   */
+  .theme-switching,
+  .theme-switching *,
+  .theme-switching *::before,
+  .theme-switching *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  /*
+   * View Transitions API crossfade (Chromium / recent Safari).
+   * We render the theme swap as a single 250ms crossfade between the
+   * old snapshot and the new one. Far smoother than per-element tweens.
+   * Browsers without support fall back to the atomic swap above.
+   */
+  @supports (view-transition-name: root) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation-duration: 260ms;
+      animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      mix-blend-mode: normal;
+    }
+
+    /* Disable the fade on the root so it is fully controlled by the
+       browser's view-transition pseudo-elements. */
+    ::view-transition-group(root) {
+      animation-duration: 260ms;
+    }
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  code,
+  pre,
+  kbd,
+  [data-mono],
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+@layer components {
+  .prose {
+    color: hsl(var(--foreground));
+  }
+
+  .prose :where(h1, h2, h3, h4, strong) {
+    color: hsl(var(--foreground));
+  }
+
+  .prose :where(p, li, blockquote) {
+    color: hsl(var(--foreground) / 0.9);
+  }
+
+  .prose blockquote {
+    border-left-color: hsl(var(--primary));
+  }
+
+  .prose a {
+    color: hsl(var(--primary));
+  }
+
+  /* ---- Tables (Tiptap @tiptap/extension-table) ---- */
+  .prose .tableWrapper {
+    overflow-x: auto;
+    margin: 1.25em 0;
+  }
+
+  .prose table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
+    margin: 1.25em 0;
+    box-shadow: 0 1px 2px 0 hsl(var(--foreground) / 0.04);
+  }
+
+  /* When wrapped by Tiptap's tableWrapper, the wrapper owns the outer margin */
+  .prose .tableWrapper > table {
+    margin: 0;
+  }
+
+  .prose table th,
+  .prose table td {
+    border-right: 1px solid hsl(var(--border));
+    border-bottom: 1px solid hsl(var(--border));
+    padding: 0.75rem 1rem;
+    vertical-align: top;
+    position: relative;
+    line-height: 1.5;
+  }
+
+  /* @tailwindcss/typography emits padding resets on first/last cells via
+     `padding-inline-start: 0` and `:where(...)`. The cascade should let our
+     more-specific rule win, but in the actual compiled stylesheet it
+     doesn't, so force the win with !important on just these two declarations. */
+  .prose table th:first-child,
+  .prose table td:first-child {
+    padding-left: 1rem !important;
+  }
+
+  .prose table th:last-child,
+  .prose table td:last-child {
+    border-right: none;
+    padding-right: 1rem !important;
+  }
+
+  .prose table tr:last-child > td,
+  .prose table tr:last-child > th {
+    border-bottom: none;
+  }
+
+  /* Round the four outer corner cells so the table's border-radius is visible
+     even with border-collapse: separate (overflow:hidden on the table itself
+     is unreliable across browsers when borders are separated). */
+  .prose table > tbody > tr:first-child > th:first-child,
+  .prose table > tbody > tr:first-child > td:first-child,
+  .prose table > thead > tr:first-child > th:first-child,
+  .prose table > thead > tr:first-child > td:first-child,
+  .prose table > tr:first-child > th:first-child,
+  .prose table > tr:first-child > td:first-child {
+    border-top-left-radius: calc(var(--radius) - 1px);
+  }
+
+  .prose table > tbody > tr:first-child > th:last-child,
+  .prose table > tbody > tr:first-child > td:last-child,
+  .prose table > thead > tr:first-child > th:last-child,
+  .prose table > thead > tr:first-child > td:last-child,
+  .prose table > tr:first-child > th:last-child,
+  .prose table > tr:first-child > td:last-child {
+    border-top-right-radius: calc(var(--radius) - 1px);
+  }
+
+  .prose table > tbody > tr:last-child > th:first-child,
+  .prose table > tbody > tr:last-child > td:first-child,
+  .prose table > tr:last-child > th:first-child,
+  .prose table > tr:last-child > td:first-child {
+    border-bottom-left-radius: calc(var(--radius) - 1px);
+  }
+
+  .prose table > tbody > tr:last-child > th:last-child,
+  .prose table > tbody > tr:last-child > td:last-child,
+  .prose table > tr:last-child > th:last-child,
+  .prose table > tr:last-child > td:last-child {
+    border-bottom-right-radius: calc(var(--radius) - 1px);
+  }
+
+  .prose table th {
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+    vertical-align: middle;
+    padding: 0.625rem 1rem;
+  }
+
+  /* Subtle zebra striping on body rows for readability at a glance */
+  .prose table tbody tr:nth-child(even) > td {
+    background: hsl(var(--muted) / 0.25);
+  }
+
+  .prose table tbody tr:hover > td {
+    background: hsl(var(--accent) / 0.5);
+  }
+
+  /* Active cell highlight (Tiptap adds .selectedCell when a cell is selected
+     in the editor) */
+  .prose table td.selectedCell,
+  .prose table th.selectedCell {
+    background: hsl(var(--primary) / 0.1);
+    box-shadow: inset 0 0 0 2px hsl(var(--primary) / 0.4);
+  }
+
+  /* Tiptap column-resize handle: invisible by default; make it discoverable */
+  .prose .column-resize-handle {
+    position: absolute;
+    right: -2px;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: hsl(var(--primary) / 0.6);
+    pointer-events: none;
+    border-radius: 2px;
+  }
+
+  .ProseMirror.resize-cursor {
+    cursor: col-resize;
+  }
+
+  /* Reset prose `prose-p:my-2` paragraph margins inside table cells so
+     they don't stack on top of the cell padding. !important needed because
+     `prose-p:my-2` is a Tailwind utility (in @layer utilities) which
+     always wins over our @layer components rule regardless of specificity. */
+  .prose table th > p,
+  .prose table td > p {
+    margin: 0 !important;
+  }
+
+  /* ---- Task list (checkbox + text alignment) ----
+     Labels get `font: inherit` so they pick up the surrounding text's
+     font-size and line-height; `height: 1lh` makes the label box exactly
+     one text-line tall, and align-items:center puts the checkbox on that
+     line. Works across prose / prose-lg / prose-xl without per-size
+     tuning. */
+  ul[data-type="taskList"] {
+    list-style: none;
+    margin: 1rem 0;
+    padding: 0;
+  }
+
+  ul[data-type="taskList"] li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    margin: 0.25rem 0;
+  }
+
+  ul[data-type="taskList"] li > label {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    user-select: none;
+    margin: 0;
+    cursor: pointer;
+    /* Force the label to use the surrounding text's font metrics so 1lh
+       resolves to the body line-height. Then make the label exactly one
+       text line tall, and align-items:center centers the checkbox on that
+       line — works across prose, prose-lg, prose-xl. */
+    font: inherit;
+    height: 1lh;
+  }
+
+  ul[data-type="taskList"] li > div {
+    flex: 1 1 0%;
+    min-width: 0;
+  }
+
+  /* prose adds `prose-p:my-2` which would push the text down relative to
+     the checkbox. The utility lives in @layer utilities which beats our
+     @layer components rule regardless of specificity, so the reset has
+     to be !important to take effect. */
+  ul[data-type="taskList"] li > div > p {
+    margin: 0 !important;
+  }
+
+  ul[data-type="taskList"] input[type="checkbox"] {
+    width: 1em;
+    height: 1em;
+    margin: 0;
+    accent-color: hsl(var(--primary));
+    cursor: pointer;
+    vertical-align: top;
+  }
+
+  /* Completed item: fade + strike-through the text; the checkbox stays
+     full-strength so it remains tappable. */
+  ul[data-type="taskList"] li[data-checked="true"] > div {
+    color: hsl(var(--muted-foreground));
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+  }
+
+  /* Subtle marker color so numbered/bullet lists feel consistent with the
+     muted UI scale rather than full-strength foreground. Task lists are
+     excluded because they have no marker. */
+  .prose ol > li::marker,
+  .prose ul:not([data-type="taskList"]) > li::marker {
+    color: hsl(var(--muted-foreground));
+  }
+}
+
+@layer utilities {
+  /* ---- Page transitions (route → route) ---- */
+  .page-enter-active,
+  .page-leave-active {
+    transition:
+      opacity 180ms ease,
+      transform 180ms ease;
+    will-change: opacity, transform;
+  }
+
+  .page-enter-from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  .page-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  /* ---- Drag-and-drop affordances ---- */
+  /* Whole-page hint when a note is being dragged: dim non-droppable surfaces. */
+  body.is-dragging-note {
+    cursor: grabbing;
+  }
+
+  /* Folder wiggle when hovered as a drop target. */
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25%      { transform: rotate(-5deg); }
+    75%      { transform: rotate(5deg); }
+  }
+
+  /* Soft "pulse" outline used by the active drop target for extra emphasis. */
+  @keyframes drop-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.45); }
+    50%      { box-shadow: 0 0 0 4px hsl(var(--primary) / 0.0); }
+  }
+
+  [data-drop-target="true"] {
+    animation: drop-pulse 1s ease-in-out infinite;
+  }
+
+  /* ---- Scrollbar ---- */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.6);
+  }
+}
