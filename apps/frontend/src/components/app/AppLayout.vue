@@ -66,9 +66,9 @@ async function logout() {
         @logout="logout"
       />
       <main class="min-w-0 flex-1 overflow-hidden">
-        <router-view v-slot="{ Component }">
+        <router-view v-slot="{ Component, route }">
           <transition name="page" mode="out-in">
-            <component :is="Component" class="h-full" />
+            <component :is="Component" :key="route.fullPath" class="h-full" />
           </transition>
         </router-view>
       </main>
