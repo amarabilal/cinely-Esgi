@@ -27,14 +27,8 @@ spec:
       labels:
         app: postgres
     spec:
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              preference:
-                matchExpressions:
-                  - key: node-role.kubernetes.io/master
-                    operator: Exists
+      nodeSelector:
+        kubernetes.io/hostname: vps-df08431f
       containers:
         - name: postgres
           image: pgvector/pgvector:pg16
