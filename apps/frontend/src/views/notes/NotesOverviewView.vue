@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { Calendar, Clock, FileText, Plus } from 'lucide-vue-next';
+import { Calendar, Clock, FileText, Plus, SlidersHorizontal } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState.vue';
 import NoteCard from '@/components/notes/NoteCard.vue';
+import MobileFilterSheet from '@/components/app/MobileFilterSheet.vue';
 import { useNotesStore } from '@/stores/notes.store';
 import type { Note, NoteQuery } from '@/api/notes.api';
 
@@ -108,10 +109,63 @@ async function newNote() {
   const n = await store.createNote();
   router.push(`/notes/${n.id}`);
 }
+
+// ---- Mobile-only filter affordances (md:hidden) ----
+const filterSheetOpen = ref(false);
+
+const selectedFilter = computed(() => (typeof route.query.filter === 'string' ? route.query.filter : ''));
+const hasTagOrFolder = computed(() => Boolean(route.query.tag) || Boolean(route.query.folder));
+
+const chipAll = computed(
+  () => route.path === '/notes' && !selectedFilter.value && !hasTagOrFolder.value,
+);
+const chipFavorites = computed(() => route.path === '/notes' && selectedFilter.value === 'favorites');
+const chipShared = computed(() => route.path === '/notes' && selectedFilter.value === 'shared');
+const chipArchived = computed(() => route.path === '/notes/archived');
+
+function chipClass(active: boolean) {
+  return [
+    'flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-xs font-medium transition-colors',
+    active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
+  ];
+}
+
+function goAll() {
+  router.push('/notes');
+}
+function goFavorites() {
+  router.push({ path: '/notes', query: { filter: 'favorites' } });
+}
+function goShared() {
+  router.push({ path: '/notes', query: { filter: 'shared' } });
+}
+function goArchived() {
+  router.push('/notes/archived');
+}
 </script>
 
 <template>
   <div class="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
+    <!-- Mobile-only filter chips (desktop relies on the sidebar). -->
+    <div class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-thin md:hidden">
+      <button type="button" :class="chipClass(chipAll)" @click="goAll">
+        All
+      </button>
+      <button type="button" :class="chipClass(chipFavorites)" @click="goFavorites">
+        ★ Favorites
+      </button>
+      <button type="button" :class="chipClass(chipShared)" @click="goShared">
+        Shared
+      </button>
+      <button type="button" :class="chipClass(chipArchived)" @click="goArchived">
+        Archived
+      </button>
+      <button type="button" :class="chipClass(false)" @click="filterSheetOpen = true">
+        <SlidersHorizontal class="size-3.5" />
+        Filters
+      </button>
+    </div>
+
     <header class="flex items-center justify-between gap-4">
       <div class="min-w-0">
         <h1 class="truncate text-xl font-semibold tracking-tight">
@@ -176,5 +230,7 @@ async function newNote() {
         />
       </div>
     </template>
+
+    <MobileFilterSheet v-model:open="filterSheetOpen" />
   </div>
 </template>

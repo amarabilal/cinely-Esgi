@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { Plus } from 'lucide-vue-next';
 import { Toaster } from 'vue-sonner';
-import { Button } from '@/components/ui/button';
 import AppTopBar from '@/components/app/AppTopBar.vue';
 import AppSidebar from '@/components/app/AppSidebar.vue';
+import MobileTabBar from '@/components/app/MobileTabBar.vue';
 import CommandPalette from '@/components/app/CommandPalette.vue';
 import { useAuthStore } from '@/stores/auth.store';
 import { useNotesStore } from '@/stores/notes.store';
@@ -18,7 +17,6 @@ const auth = useAuthStore();
 const store = useNotesStore();
 
 const commandOpen = ref(false);
-const mobileSidebarOpen = ref(false);
 const sidebarCollapsed = ref(false);
 
 onMounted(async () => {
@@ -43,13 +41,11 @@ watch(sidebarCollapsed, (value) => {
 });
 
 async function newNote() {
-  mobileSidebarOpen.value = false;
   const n = await store.createNote();
   void router.push('/notes/' + n.id);
 }
 
 async function logout() {
-  mobileSidebarOpen.value = false;
   // Unregister this device BEFORE clearing auth so the DELETE /devices/:token
   // call still carries a valid Bearer (no-op on web). Best-effort: failures are
   // swallowed inside disablePush and must not block sign-out.
@@ -62,7 +58,6 @@ async function logout() {
 <template>
   <div class="min-h-screen bg-background text-foreground antialiased">
     <AppTopBar
-      @toggle-sidebar="mobileSidebarOpen = true"
       @open-command="commandOpen = true"
       @new-note="newNote"
       @logout="logout"
@@ -79,34 +74,21 @@ async function logout() {
         <!-- Navigation between app views (overview ↔ editor ↔ search ↔
              dashboard ↔ settings) crossfades via the View Transitions API
              (router beforeResolve guard). No :key remount → the editor keeps
-             its realtime socket across note→note navigations. -->
+             its realtime socket across note→note navigations.
+
+             On mobile, the fixed bottom tab bar (~4rem + safe area) overlays
+             the content, so the scroll container gets matching bottom padding
+             to let content clear it. Desktop has no tab bar → no padding. -->
         <router-view v-slot="{ Component }">
-          <component :is="Component" class="h-full" />
+          <component
+            :is="Component"
+            class="h-full pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0"
+          />
         </router-view>
       </main>
     </div>
 
-    <Teleport to="body">
-      <div v-if="mobileSidebarOpen" class="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden" @click.self="mobileSidebarOpen = false">
-        <AppSidebar
-          v-model:collapsed="sidebarCollapsed"
-          mobile
-          class="h-full"
-          @new-note="newNote"
-          @logout="logout"
-          @close="mobileSidebarOpen = false"
-        />
-      </div>
-    </Teleport>
-
-    <Button
-      class="fixed inset-safe-b inset-safe-r z-30 shadow-lg md:hidden"
-      size="icon"
-      aria-label="New note"
-      @click="newNote"
-    >
-      <Plus class="size-5" />
-    </Button>
+    <MobileTabBar class="md:hidden" @new-note="newNote" />
 
     <CommandPalette v-model:open="commandOpen" />
     <Toaster rich-colors position="bottom-right" />
