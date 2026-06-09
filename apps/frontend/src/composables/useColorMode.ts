@@ -74,3 +74,8 @@ export function useColorMode() {
 
   return { mode, toggle };
 }
+
+/** Read-only access to the current color mode for non-component consumers (e.g. native status bar). */
+export function currentMode() {
+  return mode;
+}
