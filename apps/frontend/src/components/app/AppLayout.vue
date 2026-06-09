@@ -9,6 +9,7 @@ import AppSidebar from '@/components/app/AppSidebar.vue';
 import CommandPalette from '@/components/app/CommandPalette.vue';
 import { useAuthStore } from '@/stores/auth.store';
 import { useNotesStore } from '@/stores/notes.store';
+import { usePush } from '@/composables/usePush';
 
 const SIDEBAR_KEY = 'cinely-sidebar-collapsed';
 
@@ -28,6 +29,11 @@ onMounted(async () => {
 
   if (!auth.user) await auth.fetchMe().catch(() => { void auth.clearAuth(); });
   await Promise.all([store.fetchFolders(), store.fetchTags()]);
+
+  // Register for push notifications (no-op on web; degrades gracefully when
+  // FCM isn't configured yet). AppLayout is an auth-gated shell, so the user
+  // is authenticated here and the POST /devices call carries a valid Bearer.
+  void usePush().initPush(router);
 });
 
 watch(sidebarCollapsed, (value) => {
@@ -44,6 +50,10 @@ async function newNote() {
 
 async function logout() {
   mobileSidebarOpen.value = false;
+  // Unregister this device BEFORE clearing auth so the DELETE /devices/:token
+  // call still carries a valid Bearer (no-op on web). Best-effort: failures are
+  // swallowed inside disablePush and must not block sign-out.
+  await usePush().disablePush();
   await auth.logout();
   void router.push('/login');
 }
