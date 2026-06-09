@@ -15,12 +15,15 @@ import { Badge } from '@/components/ui/badge';
 import TagSuggestionInput from '@/components/notes/TagSuggestionInput.vue';
 import FolderPicker from '@/components/notes/FolderPicker.vue';
 import ShareExportMenu from '@/components/notes/ShareExportMenu.vue';
+import ShareNoteModal from '@/components/notes/ShareNoteModal.vue';
+import VersionHistoryModal from '@/components/notes/VersionHistoryModal.vue';
+import ToolbarDropdown from '@/components/notes/ToolbarDropdown.vue';
 import LinkModal from '@/components/notes/LinkModal.vue';
 import {
-  ArrowLeft, Star, History, Share2, Archive, Trash2, Sparkles, X,
-  Bold, Italic, Strikethrough, Heading1, Heading2, Heading3,
+  ArrowLeft, Star, History, Archive, Trash2, Sparkles, X,
+  Bold, Italic, Strikethrough, Heading, Heading1, Heading2, Heading3,
   List, ListOrdered, Code, Underline as UnderlineIcon, Pilcrow,
-  ListChecks, Quote, Code2, Minus, Link2, Link2Off,
+  ListChecks, Quote, Code2, Minus, Plus, Link2, Link2Off,
   Palette, Highlighter, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
   Table as TableIcon, Rows3, Columns3, Trash, RemoveFormatting,
@@ -37,12 +40,6 @@ const saveTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 const showVersions = ref(false);
 const showShares = ref(false);
 const isSuggestingTitle = ref(false);
-
-// Share panel
-const shareEmail = ref('');
-const sharePermission = ref<'READ' | 'WRITE'>('READ');
-const shareError = ref('');
-const shareLoading = ref(false);
 
 // Prevent re-broadcasting remote updates
 let isApplyingRemote = false;
@@ -248,20 +245,9 @@ async function suggestTitle() {
 }
 
 // ── Version & share panels ─────────────────────────────────────
-async function toggleVersions() {
+function toggleVersions() {
   showVersions.value = !showVersions.value;
   showShares.value = false;
-  if (showVersions.value && store.currentNote) {
-    await store.fetchVersions(store.currentNote.id);
-  }
-}
-
-async function toggleShares() {
-  showShares.value = !showShares.value;
-  showVersions.value = false;
-  if (showShares.value && store.currentNote) {
-    await store.fetchShares(store.currentNote.id);
-  }
 }
 
 async function restore(versionId: string) {
@@ -270,25 +256,6 @@ async function restore(versionId: string) {
   titleInput.value = store.currentNote?.title ?? '';
   editor.value?.commands.setContent(store.currentNote?.content ?? '');
   showVersions.value = false;
-}
-
-async function addShare() {
-  if (!shareEmail.value.trim() || !store.currentNote) return;
-  shareError.value = '';
-  shareLoading.value = true;
-  try {
-    await store.shareNote(store.currentNote.id, shareEmail.value.trim(), sharePermission.value);
-    shareEmail.value = '';
-  } catch (e: any) {
-    shareError.value = e.response?.data?.message || 'Failed to share note.';
-  } finally {
-    shareLoading.value = false;
-  }
-}
-
-async function handlePermissionChange(shareId: string, newPermission: 'READ' | 'WRITE') {
-  if (!store.currentNote) return;
-  await store.updateShare(store.currentNote.id, shareId, newPermission);
 }
 
 // ── Favorite / archive / delete ────────────────────────────────
@@ -339,13 +306,13 @@ watch(editor, (ed) => {
   ed.on('transaction', () => { editorTick.value++; });
 });
 
-const headingTools = computed(() => {
-  editorTick.value; // dependency
-  return [
-    { icon: Heading1, level: 1 as const, active: editor.value?.isActive('heading', { level: 1 }) },
-    { icon: Heading2, level: 2 as const, active: editor.value?.isActive('heading', { level: 2 }) },
-    { icon: Heading3, level: 3 as const, active: editor.value?.isActive('heading', { level: 3 }) },
-  ];
+const currentAlignIcon = computed(() => {
+  editorTick.value;
+  const ed = editor.value;
+  if (ed && ed.isActive({ textAlign: 'center' })) return AlignCenter;
+  if (ed && ed.isActive({ textAlign: 'right' })) return AlignRight;
+  if (ed && ed.isActive({ textAlign: 'justify' })) return AlignJustify;
+  return AlignLeft;
 });
 
 // Toolbar helpers — all gated by store.canEdit at the call site / template.
@@ -418,9 +385,6 @@ function clearFormatting() {
   run(() => editor.value!.chain().focus().unsetAllMarks().clearNodes().run());
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
-}
 </script>
 
 <template>
@@ -477,21 +441,14 @@ function formatDate(dateStr: string) {
             <History class="size-4" />
           </Button>
 
-          <!-- Share / export (copy, markdown, print, system share) -->
+          <!-- Share / export (share with people, copy, markdown, print, system share) -->
           <ShareExportMenu
             v-if="store.currentNote"
             :title="titleInput"
             :content-html="editor?.getHTML() ?? store.currentNote.content"
+            :owner="store.currentPermission === 'OWNER'"
+            @share-people="showShares = true"
           />
-
-          <!-- Share (owner only) -->
-          <Button
-            v-if="store.currentPermission === 'OWNER'"
-            variant="ghost" size="icon" title="Share note"
-            :class="showShares ? 'bg-accent text-accent-foreground' : ''"
-            @click="toggleShares">
-            <Share2 class="size-4" />
-          </Button>
 
           <template v-if="store.currentPermission === 'OWNER' && store.currentNote">
             <!-- Favorite -->
@@ -598,64 +555,133 @@ function formatDate(dateStr: string) {
 
         <span class="tbar-sep" />
 
-        <!-- Headings + paragraph -->
-        <button
-          v-for="tool in headingTools" :key="tool.level"
-          type="button" :title="`Heading ${tool.level}`" :disabled="!store.canEdit"
-          @click="run(() => editor!.chain().focus().toggleHeading({ level: tool.level }).run())"
-          class="tbtn" :class="tool.active ? 'tbtn-on' : 'tbtn-off'">
-          <component :is="tool.icon" class="size-4" />
-        </button>
-        <button
-          type="button" title="Paragraph" :disabled="!store.canEdit"
-          @click="run(() => editor!.chain().focus().setParagraph().run())"
-          class="tbtn" :class="isActive('paragraph') ? 'tbtn-on' : 'tbtn-off'">
-          <Pilcrow class="size-4" />
-        </button>
-
-        <span class="tbar-sep" />
+        <!-- Text style (headings + paragraph) -->
+        <ToolbarDropdown
+          :icon="Heading" title="Text style" :disabled="!store.canEdit"
+          :active="isActive('heading')">
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().toggleHeading({ level: 1 }).run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-default"
+            :class="isActive('heading', { level: 1 }) ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'">
+            <component :is="Heading1" class="size-4 shrink-0" />
+            Heading 1
+          </button>
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().toggleHeading({ level: 2 }).run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-default"
+            :class="isActive('heading', { level: 2 }) ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'">
+            <component :is="Heading2" class="size-4 shrink-0" />
+            Heading 2
+          </button>
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().toggleHeading({ level: 3 }).run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-default"
+            :class="isActive('heading', { level: 3 }) ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'">
+            <component :is="Heading3" class="size-4 shrink-0" />
+            Heading 3
+          </button>
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().setParagraph().run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-default"
+            :class="isActive('paragraph') ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'">
+            <component :is="Pilcrow" class="size-4 shrink-0" />
+            Paragraph
+          </button>
+        </ToolbarDropdown>
 
         <!-- Lists -->
-        <button
-          type="button" title="Bullet list" :disabled="!store.canEdit"
-          @click="run(() => editor!.chain().focus().toggleBulletList().run())"
-          class="tbtn" :class="isActive('bulletList') ? 'tbtn-on' : 'tbtn-off'">
-          <List class="size-4" />
-        </button>
-        <button
-          type="button" title="Numbered list" :disabled="!store.canEdit"
-          @click="run(() => editor!.chain().focus().toggleOrderedList().run())"
-          class="tbtn" :class="isActive('orderedList') ? 'tbtn-on' : 'tbtn-off'">
-          <ListOrdered class="size-4" />
-        </button>
-        <button
-          type="button" title="To-do list" :disabled="!store.canEdit"
-          @click="run(() => editor!.chain().focus().toggleTaskList().run())"
-          class="tbtn" :class="isActive('taskList') ? 'tbtn-on' : 'tbtn-off'">
-          <ListChecks class="size-4" />
-        </button>
+        <ToolbarDropdown
+          :icon="List" title="Lists" :disabled="!store.canEdit"
+          :active="isActive('bulletList') || isActive('orderedList') || isActive('taskList')">
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().toggleBulletList().run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-default"
+            :class="isActive('bulletList') ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'">
+            <component :is="List" class="size-4 shrink-0" />
+            Bullet list
+          </button>
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().toggleOrderedList().run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-default"
+            :class="isActive('orderedList') ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'">
+            <component :is="ListOrdered" class="size-4 shrink-0" />
+            Numbered list
+          </button>
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().toggleTaskList().run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-default"
+            :class="isActive('taskList') ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'">
+            <component :is="ListChecks" class="size-4 shrink-0" />
+            To-do list
+          </button>
+        </ToolbarDropdown>
 
-        <span class="tbar-sep" />
-
-        <!-- Blocks -->
-        <button
-          type="button" title="Quote" :disabled="!store.canEdit"
-          @click="run(() => editor!.chain().focus().toggleBlockquote().run())"
-          class="tbtn" :class="isActive('blockquote') ? 'tbtn-on' : 'tbtn-off'">
-          <Quote class="size-4" />
-        </button>
-        <button
-          type="button" title="Code block" :disabled="!store.canEdit"
-          @click="run(() => editor!.chain().focus().toggleCodeBlock().run())"
-          class="tbtn" :class="isActive('codeBlock') ? 'tbtn-on' : 'tbtn-off'">
-          <Code2 class="size-4" />
-        </button>
-        <button
-          type="button" title="Horizontal rule" :disabled="!store.canEdit"
-          @click="run(() => editor!.chain().focus().setHorizontalRule().run())"
-          class="tbtn tbtn-off">
-          <Minus class="size-4" />
-        </button>
+        <!-- Insert / blocks -->
+        <ToolbarDropdown
+          :icon="Plus" title="Insert" :disabled="!store.canEdit"
+          :active="isActive('blockquote') || isActive('codeBlock')">
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().toggleBlockquote().run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-default"
+            :class="isActive('blockquote') ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'">
+            <component :is="Quote" class="size-4 shrink-0" />
+            Quote
+          </button>
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().toggleCodeBlock().run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-default"
+            :class="isActive('codeBlock') ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'">
+            <component :is="Code2" class="size-4 shrink-0" />
+            Code block
+          </button>
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().setHorizontalRule().run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:cursor-default">
+            <component :is="Minus" class="size-4 shrink-0" />
+            Horizontal rule
+          </button>
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:cursor-default">
+            <component :is="TableIcon" class="size-4 shrink-0" />
+            Insert table
+          </button>
+          <template v-if="inTable">
+            <div class="my-1 h-px bg-border" />
+            <button
+              type="button" :disabled="!store.canEdit"
+              @click="run(() => editor!.chain().focus().addRowAfter().run())"
+              class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:cursor-default">
+              <component :is="Rows3" class="size-4 shrink-0" />
+              Add row
+            </button>
+            <button
+              type="button" :disabled="!store.canEdit"
+              @click="run(() => editor!.chain().focus().addColumnAfter().run())"
+              class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:cursor-default">
+              <component :is="Columns3" class="size-4 shrink-0" />
+              Add column
+            </button>
+            <button
+              type="button" :disabled="!store.canEdit"
+              @click="run(() => editor!.chain().focus().deleteTable().run())"
+              class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:cursor-default text-destructive">
+              <component :is="Trash" class="size-4 shrink-0 text-destructive" />
+              Delete table
+            </button>
+          </template>
+        </ToolbarDropdown>
 
         <span class="tbar-sep" />
 
@@ -734,30 +760,42 @@ function formatDate(dateStr: string) {
         <span class="tbar-sep" />
 
         <!-- Text align -->
-        <button
-          type="button" title="Align left" :disabled="!store.canEdit"
-          @click="run(() => editor!.chain().focus().setTextAlign('left').run())"
-          class="tbtn" :class="(editorTick, editor?.isActive({ textAlign: 'left' })) ? 'tbtn-on' : 'tbtn-off'">
-          <AlignLeft class="size-4" />
-        </button>
-        <button
-          type="button" title="Align center" :disabled="!store.canEdit"
-          @click="run(() => editor!.chain().focus().setTextAlign('center').run())"
-          class="tbtn" :class="(editorTick, editor?.isActive({ textAlign: 'center' })) ? 'tbtn-on' : 'tbtn-off'">
-          <AlignCenter class="size-4" />
-        </button>
-        <button
-          type="button" title="Align right" :disabled="!store.canEdit"
-          @click="run(() => editor!.chain().focus().setTextAlign('right').run())"
-          class="tbtn" :class="(editorTick, editor?.isActive({ textAlign: 'right' })) ? 'tbtn-on' : 'tbtn-off'">
-          <AlignRight class="size-4" />
-        </button>
-        <button
-          type="button" title="Justify" :disabled="!store.canEdit"
-          @click="run(() => editor!.chain().focus().setTextAlign('justify').run())"
-          class="tbtn" :class="(editorTick, editor?.isActive({ textAlign: 'justify' })) ? 'tbtn-on' : 'tbtn-off'">
-          <AlignJustify class="size-4" />
-        </button>
+        <ToolbarDropdown
+          :icon="currentAlignIcon" title="Alignment" :disabled="!store.canEdit"
+          :active="(editorTick, editor?.isActive({ textAlign: 'center' }) || editor?.isActive({ textAlign: 'right' }) || editor?.isActive({ textAlign: 'justify' }))">
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().setTextAlign('left').run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-default"
+            :class="(editorTick, editor?.isActive({ textAlign: 'left' })) ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'">
+            <component :is="AlignLeft" class="size-4 shrink-0" />
+            Align left
+          </button>
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().setTextAlign('center').run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-default"
+            :class="(editorTick, editor?.isActive({ textAlign: 'center' })) ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'">
+            <component :is="AlignCenter" class="size-4 shrink-0" />
+            Align center
+          </button>
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().setTextAlign('right').run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-default"
+            :class="(editorTick, editor?.isActive({ textAlign: 'right' })) ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'">
+            <component :is="AlignRight" class="size-4 shrink-0" />
+            Align right
+          </button>
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="run(() => editor!.chain().focus().setTextAlign('justify').run())"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors disabled:opacity-40 disabled:cursor-default"
+            :class="(editorTick, editor?.isActive({ textAlign: 'justify' })) ? 'bg-accent text-accent-foreground' : 'hover:bg-accent hover:text-accent-foreground'">
+            <component :is="AlignJustify" class="size-4 shrink-0" />
+            Align justify
+          </button>
+        </ToolbarDropdown>
 
         <span class="tbar-sep" />
 
@@ -774,36 +812,6 @@ function formatDate(dateStr: string) {
           class="tbtn" :class="isActive('superscript') ? 'tbtn-on' : 'tbtn-off'">
           <SuperscriptIcon class="size-4" />
         </button>
-
-        <span class="tbar-sep" />
-
-        <!-- Table -->
-        <button
-          type="button" title="Insert table" :disabled="!store.canEdit"
-          @click="run(() => editor!.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run())"
-          class="tbtn tbtn-off">
-          <TableIcon class="size-4" />
-        </button>
-        <template v-if="inTable">
-          <button
-            type="button" title="Add row" :disabled="!store.canEdit"
-            @click="run(() => editor!.chain().focus().addRowAfter().run())"
-            class="tbtn tbtn-off">
-            <Rows3 class="size-4" />
-          </button>
-          <button
-            type="button" title="Add column" :disabled="!store.canEdit"
-            @click="run(() => editor!.chain().focus().addColumnAfter().run())"
-            class="tbtn tbtn-off">
-            <Columns3 class="size-4" />
-          </button>
-          <button
-            type="button" title="Delete table" :disabled="!store.canEdit"
-            @click="run(() => editor!.chain().focus().deleteTable().run())"
-            class="tbtn tbtn-off text-destructive">
-            <Trash class="size-4" />
-          </button>
-        </template>
 
         <span class="tbar-sep" />
 
@@ -876,81 +884,6 @@ function formatDate(dateStr: string) {
         </div>
       </main>
 
-      <!-- Versions panel -->
-      <aside v-if="showVersions" class="flex w-64 flex-shrink-0 flex-col border-l border-border bg-muted">
-        <div class="flex items-center justify-between border-b border-border px-4 py-3">
-          <span class="text-sm font-semibold text-foreground">Version History</span>
-          <button @click="showVersions = false" class="text-muted-foreground transition-colors hover:text-foreground">
-            <X class="size-4" />
-          </button>
-        </div>
-        <div class="flex-1 space-y-2 overflow-y-auto p-3 scrollbar-thin">
-          <div v-if="store.versions.length === 0" class="mt-4 text-center text-xs text-muted-foreground">
-            No saved versions yet.
-          </div>
-          <div v-for="v in store.versions" :key="v.id" class="rounded-lg border border-border bg-card p-3">
-            <div class="mb-0.5 text-xs font-medium text-foreground">v{{ v.versionNumber }}</div>
-            <div class="mb-2 text-xs text-muted-foreground">{{ formatDate(v.createdAt) }}</div>
-            <div class="mb-2 line-clamp-2 text-xs text-muted-foreground">{{ v.title || 'Untitled' }}</div>
-            <Button v-if="store.currentPermission === 'OWNER'" @click="restore(v.id)" size="sm" class="w-full">
-              Restore
-            </Button>
-          </div>
-        </div>
-      </aside>
-
-      <!-- Share panel -->
-      <aside v-if="showShares" class="flex w-72 flex-shrink-0 flex-col border-l border-border bg-muted">
-        <div class="flex items-center justify-between border-b border-border px-4 py-3">
-          <span class="text-sm font-semibold text-foreground">Share Note</span>
-          <button @click="showShares = false" class="text-muted-foreground transition-colors hover:text-foreground">
-            <X class="size-4" />
-          </button>
-        </div>
-
-        <!-- Add share form -->
-        <div class="space-y-2 border-b border-border p-3">
-          <input
-            v-model="shareEmail" type="email" placeholder="Email address"
-            class="w-full rounded border border-input bg-background px-2 py-1.5 text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-          <select
-            v-model="sharePermission"
-            class="w-full rounded border border-input bg-background px-2 py-1.5 text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-            <option value="READ">Read only</option>
-            <option value="WRITE">Can edit</option>
-          </select>
-          <p v-if="shareError" class="text-xs text-destructive">{{ shareError }}</p>
-          <Button @click="addShare" :disabled="shareLoading || !shareEmail.trim()" size="sm" class="w-full">
-            {{ shareLoading ? 'Sharing…' : 'Share' }}
-          </Button>
-        </div>
-
-        <!-- Existing shares -->
-        <div class="flex-1 space-y-2 overflow-y-auto p-3 scrollbar-thin">
-          <div v-if="store.shares.length === 0" class="mt-4 text-center text-xs text-muted-foreground">
-            Not shared with anyone yet.
-          </div>
-          <div v-for="s in store.shares" :key="s.id" class="rounded-lg border border-border bg-card p-3">
-            <div class="truncate text-xs font-medium text-foreground">{{ s.sharedWith.email }}</div>
-            <div class="mb-2 text-xs text-muted-foreground">{{ s.sharedWith.firstName }} {{ s.sharedWith.lastName }}</div>
-            <div class="flex items-center justify-between gap-2">
-              <!-- Inline permission select — saves on change -->
-              <select
-                :value="s.permission"
-                @change="handlePermissionChange(s.id, ($event.target as HTMLSelectElement).value as 'READ' | 'WRITE')"
-                class="rounded border border-input bg-background px-1.5 py-0.5 text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                <option value="READ">Read only</option>
-                <option value="WRITE">Can edit</option>
-              </select>
-              <button
-                @click="store.revokeShare(store.currentNote!.id, s.id)"
-                class="whitespace-nowrap text-xs text-destructive transition-colors hover:text-destructive">
-                Revoke
-              </button>
-            </div>
-          </div>
-        </div>
-      </aside>
     </div>
 
     <!-- Add / edit link modal (replaces window.prompt) -->
@@ -960,6 +893,12 @@ function formatDate(dateStr: string) {
       @submit="applyLink"
       @remove="removeLink"
     />
+
+    <!-- Collaboration share modal (owner only) -->
+    <ShareNoteModal v-model:open="showShares" />
+
+    <!-- Version history modal -->
+    <VersionHistoryModal v-model:open="showVersions" @restore="restore" />
   </div>
 </template>
 
