@@ -11,11 +11,15 @@ import { devicesApi } from '@/api/devices.api';
  * import, so the web bundle never statically pulls it in (it stays a lazy
  * chunk that web never loads).
  *
- * GRACEFUL without FCM: if Firebase/FCM isn't configured yet, registration
- * simply fails. All failures are caught and logged via `console.warn` — they
- * never throw, so the app keeps working and push just won't deliver until the
- * Firebase setup is completed.
+ * OFF BY DEFAULT until Firebase is configured. `PushNotifications.register()`
+ * calls native FirebaseMessaging, which HARD-CRASHES the app (a native FATAL
+ * exception on the Capacitor plugins thread — NOT a catchable JS error) when
+ * there is no `google-services.json` / FCM config. So registration only runs
+ * when explicitly enabled at build time via `VITE_ENABLE_PUSH=true`. Enable it
+ * (together with adding google-services.json + the backend FCM credentials)
+ * once the Firebase project exists.
  */
+const PUSH_ENABLED = isNative && import.meta.env.VITE_ENABLE_PUSH === 'true';
 
 // Remembered across the app session so `disablePush()` can tell the backend
 // which token to drop on logout.
@@ -23,7 +27,9 @@ let lastToken: string | null = null;
 
 export function usePush() {
   async function initPush(router: Router): Promise<void> {
-    if (!isNative) return;
+    // Disabled until Firebase/FCM is configured — calling register() without it
+    // hard-crashes the native app. Enable with VITE_ENABLE_PUSH=true.
+    if (!PUSH_ENABLED) return;
 
     try {
       const { PushNotifications } = await import('@capacitor/push-notifications');
@@ -60,7 +66,7 @@ export function usePush() {
   }
 
   async function disablePush(): Promise<void> {
-    if (!isNative) return;
+    if (!PUSH_ENABLED) return;
 
     if (lastToken) {
       void devicesApi.unregister(lastToken).catch(() => {});
