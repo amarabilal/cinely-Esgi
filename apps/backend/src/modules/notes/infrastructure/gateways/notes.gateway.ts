@@ -16,6 +16,8 @@ interface UserPresence {
   color: string;
   // permission cache keyed by noteId — avoids async DB lookup on every keystroke
   permissions: Record<string, 'OWNER' | 'READ' | 'WRITE'>;
+  // resolves once the async user lookup has enriched userName (race-safety)
+  ready?: Promise<void>;
 }
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#8b5cf6', '#ec4899'];
@@ -41,24 +43,40 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {}
 
-  async handleConnection(client: Socket) {
+  handleConnection(client: Socket) {
     const token = client.handshake.auth?.token as string | undefined;
     if (!token) { client.disconnect(); return; }
+
+    let payload: { sub: string };
     try {
-      const payload = this.jwtService.verify<{ sub: string }>(token, {
+      payload = this.jwtService.verify<{ sub: string }>(token, {
         secret: process.env.JWT_ACCESS_SECRET,
       });
-      const user = await this.userRepo.findOne({ where: { id: payload.sub } });
-      if (!user) { client.disconnect(); return; }
-      client.data = {
-        userId: user.id,
-        userName: `${user.firstName} ${user.lastName}`,
-        color: colorFor(user.id),
-        permissions: {},
-      } satisfies UserPresence;
     } catch {
       client.disconnect();
+      return;
     }
+
+    // Set presence data SYNCHRONOUSLY — before any await — so messages that
+    // arrive before the user lookup resolves (join_note / note_update /
+    // cursor_update fire immediately on connect) never hit an undefined
+    // client.data. That race previously crashed every join with a
+    // "Cannot read/set properties of undefined" WsException.
+    const presence: UserPresence = {
+      userId: payload.sub,
+      userName: 'User',
+      color: colorFor(payload.sub),
+      permissions: {},
+    };
+    client.data = presence;
+
+    // Enrich the display name asynchronously; join_note awaits this so the
+    // broadcast presence carries the real name.
+    presence.ready = (async () => {
+      const user = await this.userRepo.findOne({ where: { id: payload.sub } });
+      if (!user) { client.disconnect(); return; }
+      presence.userName = `${user.firstName} ${user.lastName}`;
+    })();
   }
 
   async handleDisconnect(client: Socket) {
@@ -76,6 +94,7 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { noteId: string },
   ) {
     const ud = client.data as UserPresence;
+    await ud.ready?.catch(() => {}); // ensure the display name is resolved
     let permission: 'OWNER' | 'READ' | 'WRITE';
     try {
       permission = await this.notesService.getPermission(ud.userId, data.noteId);

@@ -136,9 +136,16 @@ export const useNotesStore = defineStore('notes', () => {
     if (currentNote.value?.id === noteId) currentNote.value = data;
   }
 
-  async function createFolder(name: string) {
-    const { data } = await foldersApi.create({ name });
+  async function createFolder(name: string, parentId?: string) {
+    const { data } = await foldersApi.create({ name, ...(parentId ? { parentId } : {}) });
     folders.value.push(data);
+    return data;
+  }
+
+  async function renameFolder(id: string, name: string) {
+    const { data } = await foldersApi.update(id, name);
+    const idx = folders.value.findIndex((f) => f.id === id);
+    if (idx !== -1) folders.value[idx] = data;
     return data;
   }
 
@@ -150,6 +157,13 @@ export const useNotesStore = defineStore('notes', () => {
   async function createTag(name: string, color: string) {
     const { data } = await tagsApi.create({ name, color });
     tags.value.push(data);
+    return data;
+  }
+
+  async function updateTag(id: string, payload: { name?: string; color?: string }) {
+    const { data } = await tagsApi.update(id, payload);
+    const idx = tags.value.findIndex((t) => t.id === id);
+    if (idx !== -1) tags.value[idx] = data;
     return data;
   }
 
@@ -216,8 +230,8 @@ export const useNotesStore = defineStore('notes', () => {
     createNote, updateNote, deleteNote, applyRemoteUpdate, applyRemoteTagsUpdate, applyNoteDeleted, applyNoteArchived,
     toggleFavorite, toggleArchive,
     addTagToNote, removeTagFromNote,
-    createFolder, deleteFolder,
-    createTag, deleteTag,
+    createFolder, renameFolder, deleteFolder,
+    createTag, updateTag, deleteTag,
     selectNote,
     search, clearSearch,
     fetchVersions, restoreVersion,

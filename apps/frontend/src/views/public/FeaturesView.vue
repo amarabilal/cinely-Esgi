@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import PublicLayout from '@/components/layout/PublicLayout.vue';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { FileText, Users, History, ShieldCheck, Search, Settings2, Check } from 'lucide-vue-next';
+
 const sections = [
   {
-    icon: '📝',
+    icon: FileText,
     title: 'Rich Text Editor',
     items: [
       'WYSIWYG editing powered by Tiptap',
@@ -11,7 +15,7 @@ const sections = [
     ],
   },
   {
-    icon: '🤝',
+    icon: Users,
     title: 'Real-Time Collaboration',
     items: [
       'Share notes with read or write permissions',
@@ -21,7 +25,7 @@ const sections = [
     ],
   },
   {
-    icon: '📜',
+    icon: History,
     title: 'Version History',
     items: [
       'Automatic versioning with 60-second throttle',
@@ -31,7 +35,7 @@ const sections = [
     ],
   },
   {
-    icon: '🔐',
+    icon: ShieldCheck,
     title: 'Security',
     items: [
       'Argon2id password hashing',
@@ -41,7 +45,7 @@ const sections = [
     ],
   },
   {
-    icon: '🔍',
+    icon: Search,
     title: 'Search & Organization',
     items: [
       'Full-text search across title and content (ILIKE)',
@@ -51,7 +55,7 @@ const sections = [
     ],
   },
   {
-    icon: '⚙️',
+    icon: Settings2,
     title: 'Account Management',
     items: [
       'Email verification on registration',
@@ -64,45 +68,37 @@ const sections = [
 </script>
 
 <template>
-  <div class="min-h-screen bg-white">
-    <nav class="border-b border-gray-100 px-6 py-4 flex items-center gap-6 max-w-6xl mx-auto">
-      <router-link to="/" class="text-xl font-bold text-primary-600">Notes</router-link>
-      <router-link to="/security" class="text-sm text-gray-500 hover:text-gray-900">Security</router-link>
-      <div class="ml-auto flex gap-3">
-        <router-link to="/login" class="text-sm text-gray-600 hover:text-gray-900">Login</router-link>
-        <router-link to="/register"
-          class="bg-primary-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors">
-          Get started
-        </router-link>
-      </div>
-    </nav>
+  <PublicLayout>
+    <div class="mx-auto max-w-4xl px-6 py-16 sm:py-20">
+      <h1 class="text-4xl font-bold tracking-tight text-foreground">Features</h1>
+      <p class="mt-4 text-lg text-muted-foreground">
+        Everything you need to capture, organize, and collaborate on your notes.
+      </p>
 
-    <div class="max-w-4xl mx-auto py-16 px-6">
-      <h1 class="text-4xl font-bold text-gray-900 mb-4">Features</h1>
-      <p class="text-lg text-gray-500 mb-16">Everything you need to capture, organize, and collaborate on your notes.</p>
-
-      <div class="space-y-12">
-        <div v-for="s in sections" :key="s.title" class="border border-gray-100 rounded-2xl p-8">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="text-3xl">{{ s.icon }}</span>
-            <h2 class="text-xl font-semibold text-gray-900">{{ s.title }}</h2>
-          </div>
-          <ul class="space-y-2">
-            <li v-for="item in s.items" :key="item" class="flex items-start gap-2 text-sm text-gray-600">
-              <span class="text-green-500 mt-0.5 shrink-0">✓</span>
-              {{ item }}
-            </li>
-          </ul>
-        </div>
+      <div class="mt-14 space-y-8">
+        <Card v-for="s in sections" :key="s.title">
+          <CardHeader>
+            <div class="flex items-center gap-3">
+              <div class="flex size-10 items-center justify-center rounded-xl bg-primary/10">
+                <component :is="s.icon" class="size-5 text-primary" />
+              </div>
+              <CardTitle class="text-xl">{{ s.title }}</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ul class="space-y-2.5">
+              <li
+                v-for="item in s.items"
+                :key="item"
+                class="flex items-start gap-2.5 text-sm text-muted-foreground"
+              >
+                <Check class="mt-0.5 size-4 shrink-0 text-primary" />
+                <span>{{ item }}</span>
+              </li>
+            </ul>
+          </CardContent>
+        </Card>
       </div>
     </div>
-
-    <footer class="border-t border-gray-100 py-6 px-6 text-center">
-      <div class="flex justify-center gap-6">
-        <router-link to="/legal/cgu" class="text-sm text-gray-400 hover:text-gray-600">CGU</router-link>
-        <router-link to="/legal/politique-confidentialite" class="text-sm text-gray-400 hover:text-gray-600">Privacy</router-link>
-        <router-link to="/contact" class="text-sm text-gray-400 hover:text-gray-600">Contact</router-link>
-      </div>
-    </footer>
-  </div>
+  </PublicLayout>
 </template>
