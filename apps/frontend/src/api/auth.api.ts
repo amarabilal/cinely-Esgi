@@ -10,15 +10,15 @@ export interface User {
 
 export const authApi = {
   register(payload: { email: string; password: string; firstName: string; lastName: string }) {
-    return client.post<{ accessToken: string }>('/auth/register', payload);
+    return client.post<{ accessToken: string; refreshToken?: string }>('/auth/register', payload);
   },
 
   login(payload: { email: string; password: string }) {
-    return client.post<{ accessToken?: string; twoFactorRequired?: boolean; tempToken?: string }>('/auth/login', payload);
+    return client.post<{ accessToken?: string; refreshToken?: string; twoFactorRequired?: boolean; tempToken?: string }>('/auth/login', payload);
   },
 
   verify2fa(payload: { tempToken: string; code: string }) {
-    return client.post<{ accessToken: string }>('/auth/2fa/verify', payload);
+    return client.post<{ accessToken: string; refreshToken?: string }>('/auth/2fa/verify', payload);
   },
 
   logout() {

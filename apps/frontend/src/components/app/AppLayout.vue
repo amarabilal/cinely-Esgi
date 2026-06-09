@@ -26,7 +26,7 @@ onMounted(async () => {
     if (raw !== null) sidebarCollapsed.value = raw === 'true';
   } catch { /* ignore */ }
 
-  if (!auth.user) await auth.fetchMe().catch(() => auth.clearAuth());
+  if (!auth.user) await auth.fetchMe().catch(() => { void auth.clearAuth(); });
   await Promise.all([store.fetchFolders(), store.fetchTags()]);
 });
 

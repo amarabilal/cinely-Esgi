@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { io, Socket } from 'socket.io-client';
 import type { Tag } from '@/api/tags.api';
+import { SOCKET_URL } from '@/lib/platform';
 
 export interface UserPresence {
   userId: string;
@@ -74,7 +75,9 @@ function register<T>(list: Handler<T>[], h: Handler<T>) {
 function getSocket(token: string): Socket {
   if (socket) return socket;
 
-  socket = io({ transports: ['websocket'], auth: { token } });
+  socket = SOCKET_URL
+    ? io(SOCKET_URL, { transports: ['websocket'], auth: { token } })
+    : io({ transports: ['websocket'], auth: { token } });
 
   socket.on('user_joined', (user: UserPresence) => {
     if (!presentUsers.value.find(u => u.userId === user.userId)) {

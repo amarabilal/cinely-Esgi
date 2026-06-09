@@ -177,7 +177,7 @@ async function loadNote(id: string) {
 }
 
 onMounted(async () => {
-  if (!auth.user) await auth.fetchMe().catch(() => auth.clearAuth());
+  if (!auth.user) await auth.fetchMe().catch(() => { void auth.clearAuth(); });
   if (store.notes.length === 0) await store.fetchNotes();
   if (auth.accessToken) noteSync.connect(auth.accessToken);
   await loadNote(route.params.id as string);

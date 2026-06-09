@@ -1,9 +1,18 @@
 import axios from 'axios';
+import { API_BASE_URL, isNative, CLIENT_PLATFORM_HEADER, CLIENT_PLATFORM_VALUE } from '@/lib/platform';
+import {
+  getAccessToken, setAccessToken, clearAccessToken,
+  getRefreshToken, setRefreshToken, clearRefreshToken,
+} from '@/lib/tokenStore';
 
 const client = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
+
+if (isNative) {
+  client.defaults.headers.common[CLIENT_PLATFORM_HEADER] = CLIENT_PLATFORM_VALUE;
+}
 
 let isRefreshing = false;
 let failedQueue: Array<{ resolve: (v: any) => void; reject: (e: any) => void }> = [];
@@ -14,7 +23,7 @@ function processQueue(error: any, token: string | null) {
 }
 
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
+  const token = getAccessToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -38,14 +47,28 @@ client.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const { data } = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
-      localStorage.setItem('accessToken', data.accessToken);
+      let data: { accessToken: string; refreshToken?: string };
+      if (isNative) {
+        const refreshToken = await getRefreshToken();
+        const resp = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          { refreshToken },
+          { headers: { [CLIENT_PLATFORM_HEADER]: CLIENT_PLATFORM_VALUE } },
+        );
+        data = resp.data;
+        if (data.refreshToken) await setRefreshToken(data.refreshToken);
+      } else {
+        const resp = await axios.post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true });
+        data = resp.data;
+      }
+      setAccessToken(data.accessToken);
       processQueue(null, data.accessToken);
       original.headers.Authorization = `Bearer ${data.accessToken}`;
       return client(original);
     } catch (err) {
       processQueue(err, null);
-      localStorage.removeItem('accessToken');
+      clearAccessToken();
+      await clearRefreshToken();
       window.location.href = '/login';
       return Promise.reject(err);
     } finally {
