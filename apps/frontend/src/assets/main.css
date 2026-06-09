@@ -399,6 +399,15 @@
 }
 
 @layer utilities {
+  /* ---- Safe-area insets (notch / home-indicator on iOS & Android) ----
+     Resolve to 0 on devices without insets (incl. all desktop browsers),
+     so the web layout is unchanged. Requires viewport-fit=cover in the
+     viewport meta to be non-zero. */
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .inset-safe-b { bottom: calc(1rem + env(safe-area-inset-bottom)); }
+  .inset-safe-r { right: calc(1rem + env(safe-area-inset-right)); }
+
   /* ---- Page / view transitions (route → route, incl. note→note & filter→filter) ----
      Visible ease-in-out fade + slide + subtle scale so navigating anywhere
      (pages, notes, library filters) animates in and out. Paired with a

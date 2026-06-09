@@ -58,7 +58,7 @@ async function logout() {
       @logout="logout"
     />
 
-    <div class="flex h-[calc(100vh-3rem)] min-h-0">
+    <div class="flex h-[calc(100dvh-3rem)] min-h-0">
       <AppSidebar
         v-model:collapsed="sidebarCollapsed"
         class="hidden md:flex"
@@ -90,7 +90,7 @@ async function logout() {
     </Teleport>
 
     <Button
-      class="fixed bottom-4 right-4 z-30 shadow-lg md:hidden"
+      class="fixed inset-safe-b inset-safe-r z-30 shadow-lg md:hidden"
       size="icon"
       aria-label="New note"
       @click="newNote"
