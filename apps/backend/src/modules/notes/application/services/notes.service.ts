@@ -9,6 +9,7 @@ import { User } from '../../../auth/domain/entities/user.entity';
 import { Tag } from '../../../tags/domain/entities/tag.entity';
 import { Folder } from '../../../folders/domain/entities/folder.entity';
 import { AiService } from '../../../ai/application/services/ai.service';
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import { CreateNoteDto } from '../dto/create-note.dto';
 import { UpdateNoteDto } from '../dto/update-note.dto';
 import { QueryNotesDto } from '../dto/query-notes.dto';
@@ -29,6 +30,7 @@ export class NotesService {
     @InjectRepository(Tag) private readonly tagRepository: Repository<Tag>,
     @InjectRepository(Folder) private readonly folderRepository: Repository<Folder>,
     private readonly aiService: AiService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   findAll(userId: string, query: QueryNotesDto) {
@@ -220,6 +222,15 @@ export class NotesService {
       { noteId, sharedWithId: targetUser.id, permission },
       { conflictPaths: ['noteId', 'sharedWithId'] },
     );
+
+    // Best-effort push to the recipient. Never block or fail the share.
+    await this.notifications
+      .sendToUser(targetUser.id, {
+        title: 'New shared note',
+        body: `Someone shared "${note.title || 'a note'}" with you`,
+        data: { noteId },
+      })
+      .catch(() => {});
   }
 
   async updateSharePermission(

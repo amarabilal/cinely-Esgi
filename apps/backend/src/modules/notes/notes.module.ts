@@ -12,9 +12,14 @@ import { NotesService } from './application/services/notes.service';
 import { NotesController } from './infrastructure/controllers/notes.controller';
 import { NotesGateway } from './infrastructure/gateways/notes.gateway';
 import { AiModule } from '../ai/ai.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Note, NoteVersion, NoteShare, Tag, User, Folder]), AiModule],
+  imports: [
+    TypeOrmModule.forFeature([Note, NoteVersion, NoteShare, Tag, User, Folder]),
+    AiModule,
+    NotificationsModule,
+  ],
   providers: [
     NotesService,
     NotesGateway,

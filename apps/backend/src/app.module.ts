@@ -12,6 +12,7 @@ import { TagsModule } from './modules/tags/tags.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { AiModule } from './modules/ai/ai.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -27,6 +28,7 @@ import { HealthController } from './health/health.controller';
     SettingsModule,
     AiModule,
     UploadsModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { NotesService } from './notes.service';
 import { AiService } from '../../../ai/application/services/ai.service';
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import { NOTE_REPOSITORY } from '../../domain/repositories/note.repository.interface';
 import { NoteVersion } from '../../domain/entities/note-version.entity';
 import { NoteShare } from '../../domain/entities/note-share.entity';
@@ -79,6 +80,10 @@ describe('NotesService', () => {
             generateEmbedding: jest.fn().mockResolvedValue(new Array(1536).fill(0)),
             suggestTitle: jest.fn().mockResolvedValue(''),
           },
+        },
+        {
+          provide: NotificationsService,
+          useValue: { sendToUser: jest.fn().mockResolvedValue(undefined) },
         },
       ],
     }).compile();
