@@ -42,4 +42,8 @@
     <!-- Biometric app lock (Face ID / fingerprint) -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+
+    <!-- Camera capture for photo attachments (@capacitor/camera).
+         Gallery picking goes through the system picker, no storage permission needed. -->
+    <uses-permission android:name="android.permission.CAMERA" />
 </manifest>

@@ -1,6 +1,7 @@
 import { Extension } from '@tiptap/core';
 import type { Editor, Range } from '@tiptap/core';
 import Suggestion from '@tiptap/suggestion';
+import { pickAndInsertImage } from '@/composables/useImageUpload';
 import type {
   SuggestionOptions,
   SuggestionProps,
@@ -99,6 +100,15 @@ const COMMANDS: SlashCommandItem[] = [
         .deleteRange(range)
         .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
         .run(),
+  },
+  {
+    title: 'Image',
+    description: 'Upload a photo or pick from gallery',
+    icon: 'image-plus',
+    action: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run();
+      void pickAndInsertImage(editor);
+    },
   },
 ];
 

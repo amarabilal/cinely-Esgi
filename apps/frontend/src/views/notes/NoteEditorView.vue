@@ -7,6 +7,7 @@ import { richTextExtensions, loadCodeHighlighting } from '@/editor/extensions';
 import { useAuthStore } from '@/stores/auth.store';
 import { useNotesStore } from '@/stores/notes.store';
 import { useNoteSync } from '@/composables/useNoteSync';
+import { pickAndInsertImage } from '@/composables/useImageUpload';
 import { getAccessToken } from '@/lib/tokenStore';
 import { RemoteCursorExtension, setCursors } from '@/composables/RemoteCursorExtension';
 import { aiApi } from '@/api/ai.api';
@@ -27,7 +28,7 @@ import {
   ListChecks, Quote, Code2, Minus, Plus, Link2, Link2Off,
   Palette, Highlighter, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
-  Table as TableIcon, Rows3, Columns3, Trash, RemoveFormatting,
+  Table as TableIcon, Rows3, Columns3, Trash, RemoveFormatting, ImagePlus,
 } from 'lucide-vue-next';
 
 const route = useRoute();
@@ -390,6 +391,12 @@ function clearFormatting() {
   run(() => editor.value!.chain().focus().unsetAllMarks().clearNodes().run());
 }
 
+// Image — capture/pick, upload, then insert (gated by canEdit).
+function insertImage() {
+  if (!store.canEdit || !editor.value) return;
+  void pickAndInsertImage(editor.value);
+}
+
 </script>
 
 <template>
@@ -661,6 +668,13 @@ function clearFormatting() {
             class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:cursor-default">
             <component :is="TableIcon" class="size-4 shrink-0" />
             Insert table
+          </button>
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="insertImage"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:cursor-default">
+            <component :is="ImagePlus" class="size-4 shrink-0" />
+            Insert image
           </button>
           <template v-if="inTable">
             <div class="my-1 h-px bg-border" />
@@ -1040,6 +1054,19 @@ function clearFormatting() {
   border: none;
   border-top: 1px solid hsl(var(--border));
   margin: 1rem 0;
+}
+
+/* ── Images (uploaded photo attachments) ──────────────────────── */
+:deep(.prose-editor img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 0.75rem 0;
+  display: block;
+}
+:deep(.prose-editor img.ProseMirror-selectednode) {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
 }
 
 /* ── Code block syntax highlighting (lowlight / hljs tokens) ───── */
