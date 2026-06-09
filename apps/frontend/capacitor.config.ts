@@ -5,9 +5,12 @@ const config: CapacitorConfig = {
   appName: 'Cinely',
   webDir: 'dist',
   android: {
-    // Use https scheme so the WebView origin is https://localhost (secure context:
-    // required for crypto/subtle, service workers, and SameSite handling).
-    allowMixedContent: false,
+    // The WebView origin is https://localhost (a secure context). allowMixedContent
+    // lets the app reach a plain-HTTP backend during LOCAL testing
+    // (e.g. http://10.0.2.2:3000 from an emulator). With the production HTTPS backend
+    // there is no mixed content, so this stays inert; tighten to false for a hardened
+    // store release if you don't need to hit an http backend from a device.
+    allowMixedContent: true,
   },
   plugins: {
     SplashScreen: {
