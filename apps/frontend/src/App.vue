@@ -8,10 +8,9 @@ useColorMode();
 </script>
 
 <template>
-  <router-view v-slot="{ Component }">
-    <transition name="page" mode="out-in">
-      <component :is="Component" />
-    </transition>
-  </router-view>
+  <!-- Navigation is animated app-wide via the View Transitions API
+       (see the router's beforeResolve guard) — a snapshot crossfade that
+       matches the dark/light theme switch. No CSS <transition> here. -->
+  <router-view />
   <CookieConsent />
 </template>

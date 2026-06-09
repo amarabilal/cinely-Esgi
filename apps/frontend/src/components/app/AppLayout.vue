@@ -66,10 +66,12 @@ async function logout() {
         @logout="logout"
       />
       <main class="min-w-0 flex-1 overflow-hidden">
-        <router-view v-slot="{ Component, route }">
-          <transition name="page" mode="out-in">
-            <component :is="Component" :key="route.fullPath" class="h-full" />
-          </transition>
+        <!-- Navigation between app views (overview ↔ editor ↔ search ↔
+             dashboard ↔ settings) crossfades via the View Transitions API
+             (router beforeResolve guard). No :key remount → the editor keeps
+             its realtime socket across note→note navigations. -->
+        <router-view v-slot="{ Component }">
+          <component :is="Component" class="h-full" />
         </router-view>
       </main>
     </div>
