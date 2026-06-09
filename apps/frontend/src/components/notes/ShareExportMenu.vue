@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { FileText, Hash, Printer, Share2, Type, Users } from 'lucide-vue-next';
+import { Hash, Printer, Share2, Type, Users } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import { Button } from '@/components/ui/button';
 import { stripHtml } from '@/utils/notes';
+import { useShare } from '@/composables/useShare';
+import { isNative } from '@/lib/platform';
 
 const props = defineProps<{
   title: string;
@@ -13,12 +15,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (e: 'share-people'): void }>();
 
+const { shareNote } = useShare();
+
 const isOpen = ref(false);
 const rootRef = ref<HTMLElement | null>(null);
 
-// navigator.share is only available in secure contexts / supported browsers.
+// The OS share sheet is available natively (Capacitor) or on the web when the
+// Web Share API is present (secure contexts / supported browsers).
 const canSystemShare = computed(
-  () => typeof navigator !== 'undefined' && typeof navigator.share === 'function',
+  () => isNative || (typeof navigator !== 'undefined' && typeof navigator.share === 'function'),
 );
 
 function toggle() {
@@ -143,15 +148,9 @@ function printNote() {
 async function systemShare() {
   close();
   if (!canSystemShare.value) return;
-  try {
-    await navigator.share({ title: props.title || 'Note', text: plainText.value });
-  } catch (error) {
-    // The user cancelling the share sheet rejects with AbortError — not an error to surface.
-    if (error instanceof DOMException && error.name === 'AbortError') return;
-    toast.error('Failed to share', {
-      description: error instanceof Error ? error.message : undefined,
-    });
-  }
+  // useShare routes to the native OS share sheet (Capacitor) on device and falls
+  // back to the Web Share API / clipboard on the web. Cancels are swallowed.
+  await shareNote({ title: props.title, content: props.contentHtml });
 }
 
 function onPointerDown(event: PointerEvent) {
@@ -245,8 +244,8 @@ onBeforeUnmount(() => {
         class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         @click="systemShare"
       >
-        <FileText class="size-4 shrink-0 text-muted-foreground" />
-        System share
+        <Share2 class="size-4 shrink-0 text-muted-foreground" />
+        Share…
       </button>
     </div>
     </Transition>
