@@ -22,8 +22,14 @@ async function bootstrap() {
   app.useWebSocketAdapter(new IoAdapter(app));
   app.use(cookieParser());
 
+  const corsOrigins = [
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+    'https://localhost',      // Capacitor Android (https scheme)
+    'capacitor://localhost',  // Capacitor iOS
+    'http://localhost',       // Capacitor Android (legacy/http scheme)
+  ];
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   });
