@@ -117,8 +117,11 @@ test.describe('Partage de note (lecture seule)', () => {
 
     // Owner : partage avec Guest en READ
     await ownerPage.getByRole('button', { name: /share|partager/i }).first().click();
+    await ownerPage.getByRole('menuitem', { name: /share with people/i }).click();
     await ownerPage.locator('input[type="email"]').fill(GUEST.email);
-    await ownerPage.selectOption('select', 'READ');
+    // Permission is now a custom dropdown (defaults to READ); pick "Read only" explicitly.
+    await ownerPage.getByRole('button', { name: /^permission:/i }).click();
+    await ownerPage.getByRole('option', { name: 'Read only' }).click();
     await ownerPage.getByRole('button', { name: /^share$/i }).click();
     await ownerPage.waitForTimeout(1000);
 

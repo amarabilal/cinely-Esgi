@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { FileText, Hash, Printer, Share2, Type } from 'lucide-vue-next';
+import { FileText, Hash, Printer, Share2, Type, Users } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import { Button } from '@/components/ui/button';
 import { stripHtml } from '@/utils/notes';
@@ -8,7 +8,10 @@ import { stripHtml } from '@/utils/notes';
 const props = defineProps<{
   title: string;
   contentHtml: string;
+  owner?: boolean;
 }>();
+
+const emit = defineEmits<{ (e: 'share-people'): void }>();
 
 const isOpen = ref(false);
 const rootRef = ref<HTMLElement | null>(null);
@@ -24,6 +27,11 @@ function toggle() {
 
 function close() {
   isOpen.value = false;
+}
+
+function sharePeople() {
+  close();
+  emit('share-people');
 }
 
 const plainText = computed(() => {
@@ -189,12 +197,24 @@ onBeforeUnmount(() => {
     <div
       v-if="isOpen"
       role="menu"
-      class="menu-panel absolute right-0 z-50 mt-1 w-52 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg"
+      class="menu-panel absolute right-0 z-50 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-lg"
     >
+      <div class="px-2 pb-1 pt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Share &amp; export</div>
+      <button
+        v-if="owner"
+        type="button"
+        role="menuitem"
+        class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        @click="sharePeople"
+      >
+        <Users class="size-4 shrink-0 text-muted-foreground" />
+        Share with people…
+      </button>
+      <div v-if="owner" class="my-1 h-px bg-border" />
       <button
         type="button"
         role="menuitem"
-        class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+        class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         @click="copyText"
       >
         <Type class="size-4 shrink-0 text-muted-foreground" />
@@ -203,7 +223,7 @@ onBeforeUnmount(() => {
       <button
         type="button"
         role="menuitem"
-        class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+        class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         @click="copyMarkdown"
       >
         <Hash class="size-4 shrink-0 text-muted-foreground" />
@@ -212,7 +232,7 @@ onBeforeUnmount(() => {
       <button
         type="button"
         role="menuitem"
-        class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+        class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         @click="printNote"
       >
         <Printer class="size-4 shrink-0 text-muted-foreground" />
@@ -222,7 +242,7 @@ onBeforeUnmount(() => {
         v-if="canSystemShare"
         type="button"
         role="menuitem"
-        class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+        class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         @click="systemShare"
       >
         <FileText class="size-4 shrink-0 text-muted-foreground" />
