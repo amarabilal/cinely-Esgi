@@ -62,6 +62,11 @@ client.interceptors.response.use(
         data = resp.data;
       }
       setAccessToken(data.accessToken);
+      // Keep the Pinia auth ref in step with the silently-refreshed token.
+      // Dynamic import avoids a static cycle (auth.store → auth.api → client).
+      // Pinia is active by the time any request runs, so this is safe.
+      const { useAuthStore } = await import('@/stores/auth.store');
+      useAuthStore().syncAccessToken(data.accessToken);
       processQueue(null, data.accessToken);
       original.headers.Authorization = `Bearer ${data.accessToken}`;
       return client(original);

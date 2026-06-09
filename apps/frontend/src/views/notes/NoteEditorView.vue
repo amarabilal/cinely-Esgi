@@ -7,6 +7,7 @@ import { richTextExtensions, loadCodeHighlighting } from '@/editor/extensions';
 import { useAuthStore } from '@/stores/auth.store';
 import { useNotesStore } from '@/stores/notes.store';
 import { useNoteSync } from '@/composables/useNoteSync';
+import { getAccessToken } from '@/lib/tokenStore';
 import { RemoteCursorExtension, setCursors } from '@/composables/RemoteCursorExtension';
 import { aiApi } from '@/api/ai.api';
 import { notesApi } from '@/api/notes.api';
@@ -171,15 +172,19 @@ async function loadNote(id: string) {
   editor.value?.commands.setContent(note.content || '');
   editor.value?.setEditable(store.canEdit);
 
-  if (auth.accessToken) {
-    await noteSync.joinNote(auth.accessToken, note.id);
+  // Read the freshest token from localStorage (the refresh interceptor keeps it
+  // current) so the socket handshake never uses a stale access token.
+  const token = getAccessToken();
+  if (token) {
+    await noteSync.joinNote(token, note.id);
   }
 }
 
 onMounted(async () => {
   if (!auth.user) await auth.fetchMe().catch(() => { void auth.clearAuth(); });
   if (store.notes.length === 0) await store.fetchNotes();
-  if (auth.accessToken) noteSync.connect(auth.accessToken);
+  const token = getAccessToken();
+  if (token) noteSync.connect(token);
   await loadNote(route.params.id as string);
   // Lazily pull in syntax-highlighting grammars (separate async chunk) once the
   // editor is up — keeps them out of the initial editor bundle.
