@@ -69,12 +69,18 @@ async function verify(): Promise<boolean> {
   }
 }
 
-/** Attempts to unlock via biometrics. No-op when not currently locked. */
+let unlocking = false;
+/** Attempts to unlock via biometrics. No-op when not locked or a prompt is already in flight. */
 async function tryUnlock(): Promise<void> {
-  if (!locked.value) return;
-  const ok = await verify();
-  if (ok) locked.value = false;
-  // On failure keep locked — the overlay lets the user retry.
+  if (!locked.value || unlocking) return;
+  unlocking = true;
+  try {
+    const ok = await verify();
+    if (ok) locked.value = false;
+    // On failure keep locked — the overlay lets the user retry.
+  } finally {
+    unlocking = false;
+  }
 }
 
 /** Re-engages the lock (used on app resume). Inert unless enabled, available, and native. */
@@ -120,10 +126,8 @@ async function init(): Promise<void> {
     resumeListenerAttached = true;
     try {
       const { App } = await import('@capacitor/app');
-      App.addListener('resume', () => {
-        lock();
-        void tryUnlock();
-      });
+      // Single foreground signal (appStateChange) to avoid double biometric
+      // prompts — 'resume' would fire redundantly alongside this on Android.
       App.addListener('appStateChange', ({ isActive }) => {
         if (isActive) {
           lock();
