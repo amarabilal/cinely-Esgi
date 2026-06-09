@@ -1,10 +1,20 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useAppLock } from '@/composables/useAppLock';
+import { isNative } from '@/lib/platform';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 const store = useSettingsStore();
+
+// Biometric app lock (native only; toggle hidden unless hardware is available).
+const appLock = useAppLock();
+const appLockEnabled = ref(appLock.isEnabled());
+async function toggleAppLock(value: boolean) {
+  await appLock.setEnabled(value);
+  appLockEnabled.value = appLock.isEnabled();
+}
 
 const activeTab = ref<'profile' | 'security' | 'sessions'>('profile');
 
@@ -167,6 +177,27 @@ function formatDate(dateStr: string) {
 
       <!-- Security Tab -->
       <div v-if="activeTab === 'security'" class="space-y-6">
+        <!-- App Lock (native + biometric hardware available only) -->
+        <div v-if="isNative && appLock.available.value" class="bg-card border border-border rounded-xl p-6 space-y-4">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <h2 class="text-base font-semibold text-foreground">App Lock</h2>
+              <p class="text-sm text-muted-foreground mt-0.5">Require Face ID / fingerprint to open the app.</p>
+            </div>
+            <label class="relative inline-flex shrink-0 cursor-pointer items-center">
+              <input
+                type="checkbox"
+                class="peer sr-only"
+                :checked="appLockEnabled"
+                @change="toggleAppLock(($event.target as HTMLInputElement).checked)" />
+              <span
+                class="h-6 w-11 rounded-full bg-input transition-colors peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background"></span>
+              <span
+                class="absolute left-0.5 top-0.5 size-5 rounded-full bg-background shadow-sm transition-transform peer-checked:translate-x-5"></span>
+            </label>
+          </div>
+        </div>
+
         <!-- Change Password -->
         <div class="bg-card border border-border rounded-xl p-6 space-y-4">
           <h2 class="text-base font-semibold text-foreground">Change Password</h2>

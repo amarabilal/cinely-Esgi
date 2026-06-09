@@ -17,6 +17,7 @@
     "@capacitor/preferences": "^6.0.4",
     "@capacitor/splash-screen": "^6.0.4",
     "@capacitor/status-bar": "^6.0.3",
+    "@capgo/capacitor-native-biometric": "^6.0.4",
     "@sentry/vue": "^8.0.0",
     "@tiptap/extension-code-block-lowlight": "^2.27.2",
     "@tiptap/extension-color": "^2.27.2",
