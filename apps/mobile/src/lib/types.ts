@@ -68,6 +68,24 @@ export interface TopTag {
   noteCount: number;
 }
 
+/** Permission level for a note share. */
+export type SharePermission = 'READ' | 'WRITE';
+
+/**
+ * A single collaborator on a note, as returned by GET /notes/:id/shares.
+ */
+export interface NoteShare {
+  id: string;
+  permission: SharePermission;
+  sharedWith: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  };
+  createdAt: string;
+}
+
 /** Response shape of GET /notes/stats. */
 export interface NotesStats {
   totalNotes: number;

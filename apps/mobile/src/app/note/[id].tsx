@@ -1,11 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,9 +22,10 @@ import {
 } from 'react-native-pell-rich-editor';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ShareModal } from '@/components/share-modal';
 import { Palette } from '@/constants/theme';
 import { api } from '@/lib/api';
-import type { Note } from '@/lib/types';
+import type { Note, Tag } from '@/lib/types';
 
 /** ms to wait after the last edit before pushing an autosave. */
 const AUTOSAVE_DELAY = 1400;
@@ -66,6 +70,11 @@ export default function NoteScreen() {
   const [title, setTitle] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [shareVisible, setShareVisible] = useState(false);
+  const [tagPickerVisible, setTagPickerVisible] = useState(false);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(false);
 
   const richText = useRef<RichEditor>(null);
   /** Latest editor HTML, kept in a ref so saving never re-renders the editor. */
@@ -78,6 +87,9 @@ export default function NoteScreen() {
   const mounted = useRef(true);
 
   const readOnly = note?.sharedPermission === 'READ';
+  /** Owner has no sharedPermission set. Only the owner can manage sharing. */
+  const isOwner = !!note && !note.sharedPermission;
+  const canEdit = !readOnly;
 
   // --- Load the note once ----------------------------------------------------
   useEffect(() => {
@@ -91,6 +103,7 @@ export default function NoteScreen() {
         titleRef.current = data.title ?? '';
         contentRef.current = data.content ?? '';
         setIsFavorite(data.isFavorite);
+        setTags(data.tags ?? []);
       } catch {
         if (active) setError(true);
       } finally {
@@ -202,6 +215,64 @@ export default function NoteScreen() {
     ]);
   }, [id, router]);
 
+  // --- Tags ------------------------------------------------------------------
+  const openTagPicker = useCallback(async () => {
+    setTagPickerVisible(true);
+    setTagsLoading(true);
+    try {
+      const { data } = await api.get<Tag[]>('/tags');
+      setAllTags(data);
+    } catch {
+      // leave list empty; picker shows empty state
+    } finally {
+      setTagsLoading(false);
+    }
+  }, []);
+
+  const handleAttachTag = useCallback(
+    async (tag: Tag) => {
+      if (tags.some((t) => t.id === tag.id)) {
+        setTagPickerVisible(false);
+        return;
+      }
+      // optimistic
+      setTags((prev) => [...prev, tag]);
+      setTagPickerVisible(false);
+      try {
+        const { data } = await api.post<Note | null>(
+          `/notes/${id}/tags/${tag.id}`,
+        );
+        if (data?.tags) setTags(data.tags);
+      } catch {
+        setTags((prev) => prev.filter((t) => t.id !== tag.id));
+        Alert.alert('Could not add tag', 'Please try again.');
+      }
+    },
+    [id, tags],
+  );
+
+  const handleRemoveTag = useCallback(
+    async (tag: Tag) => {
+      const prevTags = tags;
+      setTags((prev) => prev.filter((t) => t.id !== tag.id));
+      try {
+        const { data } = await api.delete<Note | null>(
+          `/notes/${id}/tags/${tag.id}`,
+        );
+        if (data?.tags) setTags(data.tags);
+      } catch {
+        setTags(prevTags);
+        Alert.alert('Could not remove tag', 'Please try again.');
+      }
+    },
+    [id, tags],
+  );
+
+  const availableTags = useMemo(
+    () => allTags.filter((t) => !tags.some((nt) => nt.id === t.id)),
+    [allTags, tags],
+  );
+
   // --- Render ----------------------------------------------------------------
   if (loading) {
     return (
@@ -264,6 +335,20 @@ export default function NoteScreen() {
               </View>
             ) : null}
 
+            {isOwner ? (
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => setShareVisible(true)}
+                activeOpacity={0.7}
+                accessibilityLabel="Share note">
+                <Ionicons
+                  name="person-add-outline"
+                  size={21}
+                  color={Palette.foreground}
+                />
+              </TouchableOpacity>
+            ) : null}
+
             <TouchableOpacity
               style={styles.iconButton}
               onPress={handleFavorite}
@@ -302,6 +387,46 @@ export default function NoteScreen() {
           multiline
         />
 
+        {/* Tag chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.tagBar}
+          contentContainerStyle={styles.tagBarContent}
+          keyboardShouldPersistTaps="handled">
+          {tags.map((tag) => (
+            <View key={tag.id} style={styles.tagChip}>
+              <View
+                style={[
+                  styles.tagChipDot,
+                  { backgroundColor: tag.color || Palette.primary },
+                ]}
+              />
+              <Text style={styles.tagChipText} numberOfLines={1}>
+                {tag.name}
+              </Text>
+              {canEdit ? (
+                <TouchableOpacity
+                  hitSlop={6}
+                  onPress={() => handleRemoveTag(tag)}
+                  accessibilityLabel={`Remove tag ${tag.name}`}>
+                  <Ionicons name="close" size={14} color={Palette.mutedForeground} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ))}
+          {canEdit ? (
+            <TouchableOpacity
+              style={styles.addTagChip}
+              activeOpacity={0.7}
+              onPress={openTagPicker}
+              accessibilityLabel="Add tag">
+              <Ionicons name="add" size={16} color={Palette.primary} />
+              <Text style={styles.addTagText}>tag</Text>
+            </TouchableOpacity>
+          ) : null}
+        </ScrollView>
+
         {/* Editor */}
         <RichEditor
           ref={richText}
@@ -333,6 +458,71 @@ export default function NoteScreen() {
           />
         ) : null}
       </KeyboardAvoidingView>
+
+      {/* Share modal (owner only) */}
+      {isOwner ? (
+        <ShareModal
+          visible={shareVisible}
+          noteId={id}
+          onClose={() => setShareVisible(false)}
+        />
+      ) : null}
+
+      {/* Tag picker */}
+      <Modal
+        visible={tagPickerVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setTagPickerVisible(false)}>
+        <Pressable
+          style={styles.tagBackdrop}
+          onPress={() => setTagPickerVisible(false)}
+        />
+        <SafeAreaView style={styles.tagSheetWrap} edges={['bottom']}>
+          <View style={styles.tagSheet}>
+            <View style={styles.tagGrabber} />
+            <View style={styles.tagSheetHeader}>
+              <Text style={styles.tagSheetTitle}>Add a tag</Text>
+              <TouchableOpacity
+                onPress={() => setTagPickerVisible(false)}
+                hitSlop={8}
+                accessibilityLabel="Close tag picker">
+                <Ionicons name="close" size={24} color={Palette.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            {tagsLoading ? (
+              <View style={styles.tagSheetCenter}>
+                <ActivityIndicator color={Palette.primary} />
+              </View>
+            ) : availableTags.length === 0 ? (
+              <Text style={styles.tagSheetEmpty}>
+                No more tags to add. Create tags from the filter sheet.
+              </Text>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {availableTags.map((tag) => (
+                  <TouchableOpacity
+                    key={tag.id}
+                    style={styles.tagPickRow}
+                    activeOpacity={0.7}
+                    onPress={() => handleAttachTag(tag)}>
+                    <View
+                      style={[
+                        styles.tagChipDot,
+                        { backgroundColor: tag.color || Palette.primary },
+                      ]}
+                    />
+                    <Text style={styles.tagPickLabel} numberOfLines={1}>
+                      {tag.name}
+                    </Text>
+                    <Ionicons name="add" size={20} color={Palette.primary} />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -390,4 +580,81 @@ const styles = StyleSheet.create({
     borderTopColor: Palette.border,
   },
   toolbarLabel: { fontSize: 16, fontWeight: '700' },
+
+  // Tag chips
+  tagBar: { flexGrow: 0, paddingHorizontal: 20, marginBottom: 4 },
+  tagBarContent: { gap: 8, alignItems: 'center', paddingVertical: 2 },
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    backgroundColor: Palette.muted,
+    maxWidth: 180,
+  },
+  tagChipDot: { width: 10, height: 10, borderRadius: 5 },
+  tagChipText: { fontSize: 13, fontWeight: '600', color: Palette.foreground },
+  addTagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Palette.border,
+    borderStyle: 'dashed',
+  },
+  addTagText: { fontSize: 13, fontWeight: '600', color: Palette.primary },
+
+  // Tag picker sheet
+  tagBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  tagSheetWrap: { flex: 1, justifyContent: 'flex-end' },
+  tagSheet: {
+    backgroundColor: Palette.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 12,
+    maxHeight: '70%',
+  },
+  tagGrabber: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Palette.border,
+    marginBottom: 12,
+  },
+  tagSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  tagSheetTitle: { fontSize: 20, fontWeight: '800', color: Palette.foreground },
+  tagSheetCenter: { paddingVertical: 32, alignItems: 'center' },
+  tagSheetEmpty: {
+    fontSize: 14,
+    color: Palette.mutedForeground,
+    paddingVertical: 12,
+  },
+  tagPickRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 48,
+    paddingVertical: 6,
+  },
+  tagPickLabel: { flex: 1, fontSize: 16, color: Palette.foreground },
 });
