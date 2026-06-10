@@ -39,5 +39,16 @@ yarn-error.*
 example
 
 # generated native folders
+# iOS native project is still CNG-generated on demand (not committed).
 /ios
-/android
+
+# Android native project IS committed (standalone dev build) — but ignore
+# its build artifacts so we never commit gradle caches / compiled output.
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/.cxx/
+/android/app/.cxx/
+/android/local.properties
+/android/.kotlin/
+/android/app/debug.keystore

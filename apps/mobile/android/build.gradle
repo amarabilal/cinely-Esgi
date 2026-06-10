@@ -1,0 +1,42 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+  dependencies {
+    classpath('com.android.tools.build:gradle')
+    classpath('com.facebook.react:react-native-gradle-plugin')
+    classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
+  }
+}
+
+allprojects {
+  repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://www.jitpack.io' }
+  }
+
+  // Force a newer CMake (ships newer ninja) for all native modules.
+  // CMake 3.22.1's bundled ninja loops forever ("build.ninja still dirty
+  // after 100 tries") on Windows build paths that contain a space
+  // (this workspace lives under "...\Projet anuel\..."). ninja 1.11+ in
+  // CMake 3.31.x fixes the glob-restat behaviour.
+  afterEvaluate { project ->
+    if (project.plugins.hasPlugin("com.android.library") ||
+        project.plugins.hasPlugin("com.android.application")) {
+      project.android {
+        externalNativeBuild {
+          cmake {
+            version "3.31.4"
+          }
+        }
+      }
+    }
+  }
+}
+
+apply plugin: "expo-root-project"
+apply plugin: "com.facebook.react.rootproject"
