@@ -532,7 +532,7 @@ function insertImage() {
       </div>
 
       <!-- Format toolbar -->
-      <div class="flex flex-wrap items-center gap-0.5 border-t border-border px-3 py-1.5 md:px-4">
+      <div class="flex flex-wrap items-center gap-1.5 border-t border-border px-3 py-2 md:gap-1 md:px-4">
         <!-- Inline marks -->
         <button
           type="button" title="Bold" :disabled="!store.canEdit"
@@ -854,7 +854,7 @@ function insertImage() {
             v-if="editor && store.canEdit"
             :editor="editor"
             :tippy-options="{ duration: 100 }"
-            class="flex items-center gap-0.5 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+            class="bubble-menu flex items-center gap-0.5 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg">
             <button
               type="button" title="Bold"
               @click="editor!.chain().focus().toggleBold().run()"
@@ -959,20 +959,23 @@ function insertImage() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.375rem;
-  transition: background-color 0.15s, color 0.15s;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 }
 .tbtn:disabled { opacity: 0.3; cursor: default; }
-.tbtn-on { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+.tbtn-on { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); border-color: hsl(var(--border)); }
 .tbtn-off { color: hsl(var(--muted-foreground)); }
 .tbtn-off:not(:disabled):hover { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+/* Smaller, denser buttons inside the floating selection bubble menu. */
+.bubble-menu .tbtn { width: 1.75rem; height: 1.75rem; }
 .tbar-sep {
   display: inline-block;
   width: 1px;
-  height: 1rem;
-  margin: 0 0.25rem;
+  height: 1.25rem;
+  margin: 0 0.375rem;
   background: hsl(var(--border));
 }
 
