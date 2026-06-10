@@ -1,15 +1,66 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { Palette } from '@/constants/theme';
+import { useAuthStore } from '@/stores/auth';
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+/**
+ * Auth gate: redirects based on auth status.
+ * - unauthenticated + not on an auth route -> /(auth)/login
+ * - authenticated + on an auth route       -> /(tabs)
+ * Renders a centered spinner while the status is still loading.
+ */
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const status = useAuthStore((s) => s.status);
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'loading') return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (status === 'unauthenticated' && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (status === 'authenticated' && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [status, segments, router]);
+
+  if (status === 'loading') {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={Palette.primary} />
+      </View>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+export default function RootLayout() {
+  const hydrate = useAuthStore((s) => s.hydrate);
+
+  useEffect(() => {
+    void hydrate();
+  }, [hydrate]);
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <AuthGate>
+        <Stack screenOptions={{ headerShown: false }} />
+      </AuthGate>
+    </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Palette.background,
+  },
+});

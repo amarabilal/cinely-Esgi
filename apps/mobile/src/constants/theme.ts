@@ -3,8 +3,6 @@
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
  */
 
-import '@/global.css';
-
 import { Platform } from 'react-native';
 
 export const Colors = {
@@ -25,6 +23,24 @@ export const Colors = {
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+
+/**
+ * Cinely brand palette (light theme, matching the web app). Screens import
+ * this directly. Light-only for now — kept tidy and flat on purpose.
+ */
+export const Palette = {
+  primary: '#6b26d9',
+  background: '#ffffff',
+  card: '#ffffff',
+  border: '#e5e5ea',
+  /** muted / secondary surface */
+  muted: '#f4f4f5',
+  foreground: '#0a0a0a',
+  mutedForeground: '#71717a',
+  destructive: '#dc2626',
+} as const;
+
+export type PaletteColor = keyof typeof Palette;
 
 export const Fonts = Platform.select({
   ios: {
