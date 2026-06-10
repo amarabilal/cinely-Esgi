@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Palette } from '@/constants/theme';
+import { installNotificationHandler, registerForPush } from '@/lib/push';
 import { useAuthStore } from '@/stores/auth';
 
 /**
@@ -42,10 +43,21 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   const hydrate = useAuthStore((s) => s.hydrate);
+  const status = useAuthStore((s) => s.status);
 
   useEffect(() => {
     void hydrate();
+    // Foreground notification banners (no-op-safe if notifications unavailable).
+    installNotificationHandler();
   }, [hydrate]);
+
+  // Best-effort push registration once authenticated. Fully graceful: in Expo
+  // Go / without Firebase this no-ops (see lib/push.ts) and never throws.
+  useEffect(() => {
+    if (status === 'authenticated') {
+      void registerForPush();
+    }
+  }, [status]);
 
   return (
     <SafeAreaProvider>

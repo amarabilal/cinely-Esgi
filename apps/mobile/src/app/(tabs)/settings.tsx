@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { AxiosError } from 'axios';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -16,8 +18,31 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Palette } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { registerForPush, type PushResult } from '@/lib/push';
 import type { User } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
+
+/** GET /settings/profile shape (includes the 2FA flag /auth/me omits). */
+interface SettingsProfile {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  totpEnabled: boolean;
+}
+
+/** POST /settings/2fa/setup response. */
+interface TotpSetupResponse {
+  secret: string;
+  /** data-URL PNG of the otpauth QR. */
+  qrDataUrl: string;
+}
+
+/** POST /settings/2fa/enable response. */
+interface TotpEnableResponse {
+  message: string;
+  recoveryCodes: string[];
+}
 
 /** Pull a human-readable message out of an axios error. */
 function errorMessage(err: unknown, fallback: string): string {
@@ -55,6 +80,38 @@ export default function SettingsScreen() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSaved, setPasswordSaved] = useState(false);
+
+  // --- 2FA state ---
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  /** Active setup payload (QR + secret) once "Set up 2FA" is tapped. */
+  const [totpSetup, setTotpSetup] = useState<TotpSetupResponse | null>(null);
+  const [totpCode, setTotpCode] = useState('');
+  const [totpBusy, setTotpBusy] = useState(false);
+  const [totpError, setTotpError] = useState<string | null>(null);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
+  /** Drives the "Disable 2FA" code prompt. */
+  const [disablingTotp, setDisablingTotp] = useState(false);
+
+  // --- Push notifications state ---
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushStatus, setPushStatus] = useState<PushResult['status'] | null>(null);
+  const [pushMessage, setPushMessage] = useState<string | null>(null);
+
+  // Fetch the 2FA flag (the /auth/me user object doesn't carry it).
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const { data } = await api.get<SettingsProfile>('/settings/profile');
+        if (active) setTotpEnabled(data.totpEnabled);
+      } catch {
+        // leave as-is; 2FA card still renders a "Set up" affordance
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleLogout() {
     if (loggingOut) return;
@@ -131,6 +188,99 @@ export default function SettingsScreen() {
       setPasswordError(errorMessage(err, 'Could not update your password.'));
     } finally {
       setSavingPassword(false);
+    }
+  }
+
+  // --- 2FA handlers ---
+  async function handleSetupTotp() {
+    if (totpBusy) return;
+    setTotpError(null);
+    setRecoveryCodes(null);
+    setTotpCode('');
+    setTotpBusy(true);
+    try {
+      const { data } = await api.post<TotpSetupResponse>('/settings/2fa/setup');
+      setTotpSetup(data);
+    } catch (err) {
+      setTotpError(errorMessage(err, 'Could not start 2FA setup.'));
+    } finally {
+      setTotpBusy(false);
+    }
+  }
+
+  async function handleEnableTotp() {
+    if (totpBusy) return;
+    setTotpError(null);
+    if (totpCode.trim().length !== 6) {
+      setTotpError('Enter the 6-digit code from your authenticator app.');
+      return;
+    }
+    setTotpBusy(true);
+    try {
+      const { data } = await api.post<TotpEnableResponse>('/settings/2fa/enable', {
+        code: totpCode.trim(),
+      });
+      setRecoveryCodes(data.recoveryCodes ?? []);
+      setTotpEnabled(true);
+      setTotpSetup(null);
+      setTotpCode('');
+    } catch (err) {
+      setTotpError(errorMessage(err, 'Could not enable 2FA. Check the code.'));
+    } finally {
+      setTotpBusy(false);
+    }
+  }
+
+  async function handleDisableTotp() {
+    if (totpBusy) return;
+    setTotpError(null);
+    if (totpCode.trim().length !== 6) {
+      setTotpError('Enter a current 6-digit code to disable 2FA.');
+      return;
+    }
+    setTotpBusy(true);
+    try {
+      await api.post('/settings/2fa/disable', { code: totpCode.trim() });
+      setTotpEnabled(false);
+      setDisablingTotp(false);
+      setTotpCode('');
+      setRecoveryCodes(null);
+    } catch (err) {
+      setTotpError(errorMessage(err, 'Could not disable 2FA. Check the code.'));
+    } finally {
+      setTotpBusy(false);
+    }
+  }
+
+  function cancelTotp() {
+    setTotpSetup(null);
+    setDisablingTotp(false);
+    setTotpCode('');
+    setTotpError(null);
+  }
+
+  // --- Push handler ---
+  async function handleEnablePush() {
+    if (pushBusy) return;
+    setPushBusy(true);
+    setPushMessage(null);
+    try {
+      const result = await registerForPush();
+      setPushStatus(result.status);
+      if (result.status === 'registered') {
+        setPushMessage('Notifications enabled on this device.');
+      } else if (result.status === 'denied') {
+        setPushMessage('Permission denied. Enable notifications in system settings.');
+      } else {
+        // Graceful no-op path (Expo Go / no Firebase / emulator).
+        setPushMessage(result.reason);
+      }
+    } catch {
+      // registerForPush never throws, but stay defensive.
+      setPushStatus('unavailable');
+      setPushMessage('Push needs a production build with Firebase.');
+    } finally {
+      setPushBusy(false);
     }
   }
 
@@ -328,6 +478,202 @@ export default function SettingsScreen() {
             </View>
           </View>
 
+          {/* Two-factor authentication */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Two-factor authentication</Text>
+              <View
+                style={[
+                  styles.badge,
+                  totpEnabled ? styles.badgeOk : styles.badgeWarn,
+                ]}>
+                <Text
+                  style={[
+                    styles.badgeText,
+                    totpEnabled ? styles.badgeTextOk : styles.badgeTextWarn,
+                  ]}>
+                  {totpEnabled ? 'On' : 'Off'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Recovery codes shown right after enabling. */}
+            {recoveryCodes ? (
+              <View style={styles.totpBlock}>
+                <Text style={styles.success}>
+                  2FA enabled. Save these recovery codes somewhere safe — each
+                  works once if you lose your authenticator.
+                </Text>
+                <View style={styles.codeGrid}>
+                  {recoveryCodes.map((c) => (
+                    <Text key={c} style={styles.code} selectable>
+                      {c}
+                    </Text>
+                  ))}
+                </View>
+                <Text style={styles.hint}>
+                  Long-press a code to copy it.
+                </Text>
+              </View>
+            ) : totpSetup ? (
+              /* Setup in progress: show QR + secret + confirm code input. */
+              <View style={styles.totpBlock}>
+                <Text style={styles.hint}>
+                  Scan this QR with Google Authenticator (or any TOTP app), then
+                  enter the 6-digit code to confirm.
+                </Text>
+                <View style={styles.qrWrap}>
+                  <Image
+                    source={{ uri: totpSetup.qrDataUrl }}
+                    style={styles.qr}
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={styles.secretLabel}>Or enter this key manually:</Text>
+                <Text style={styles.code} selectable>
+                  {totpSetup.secret}
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="6-digit code"
+                  placeholderTextColor={Palette.mutedForeground}
+                  value={totpCode}
+                  onChangeText={setTotpCode}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  editable={!totpBusy}
+                />
+                {totpError ? <Text style={styles.error}>{totpError}</Text> : null}
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={[styles.button, styles.buttonSecondary]}
+                    onPress={cancelTotp}
+                    disabled={totpBusy}
+                    activeOpacity={0.85}>
+                    <Text style={styles.buttonSecondaryText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.button, styles.buttonPrimary]}
+                    onPress={handleEnableTotp}
+                    disabled={totpBusy}
+                    activeOpacity={0.85}>
+                    {totpBusy ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Text style={styles.buttonPrimaryText}>Confirm</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : disablingTotp ? (
+              /* Disable flow: confirm with a current code. */
+              <View style={styles.totpBlock}>
+                <Text style={styles.hint}>
+                  Enter a current 6-digit code to turn off 2FA.
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="6-digit code"
+                  placeholderTextColor={Palette.mutedForeground}
+                  value={totpCode}
+                  onChangeText={setTotpCode}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  editable={!totpBusy}
+                />
+                {totpError ? <Text style={styles.error}>{totpError}</Text> : null}
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity
+                    style={[styles.button, styles.buttonSecondary]}
+                    onPress={cancelTotp}
+                    disabled={totpBusy}
+                    activeOpacity={0.85}>
+                    <Text style={styles.buttonSecondaryText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.button, styles.buttonDestructive]}
+                    onPress={handleDisableTotp}
+                    disabled={totpBusy}
+                    activeOpacity={0.85}>
+                    {totpBusy ? (
+                      <ActivityIndicator color={Palette.destructive} />
+                    ) : (
+                      <Text style={styles.buttonDestructiveText}>Disable</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              /* Idle: show the enable / disable entry point. */
+              <View style={styles.totpBlock}>
+                <Text style={styles.hint}>
+                  {totpEnabled
+                    ? 'Your account is protected with an authenticator app.'
+                    : 'Add a second step at login using an authenticator app.'}
+                </Text>
+                {totpError ? <Text style={styles.error}>{totpError}</Text> : null}
+                {totpEnabled ? (
+                  <TouchableOpacity
+                    style={[styles.fullButton, styles.buttonSecondary]}
+                    onPress={() => {
+                      setTotpError(null);
+                      setTotpCode('');
+                      setDisablingTotp(true);
+                    }}
+                    activeOpacity={0.85}>
+                    <Text style={styles.buttonDestructiveText}>Disable 2FA</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.fullButton, styles.buttonPrimary]}
+                    onPress={handleSetupTotp}
+                    disabled={totpBusy}
+                    activeOpacity={0.85}>
+                    {totpBusy ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Text style={styles.buttonPrimaryText}>Set up 2FA</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+
+          {/* Push notifications */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Notifications</Text>
+              <Switch
+                value={pushStatus === 'registered'}
+                onValueChange={(v) => {
+                  if (v) void handleEnablePush();
+                }}
+                disabled={pushBusy || pushStatus === 'registered'}
+                trackColor={{ true: Palette.primary, false: Palette.border }}
+              />
+            </View>
+            <Text style={styles.hint}>
+              Get push notifications for shared notes and updates. Delivery
+              requires a production/dev build with Firebase configured; in Expo
+              Go this is a no-op.
+            </Text>
+            {pushBusy ? (
+              <ActivityIndicator
+                color={Palette.primary}
+                style={styles.pushSpinner}
+              />
+            ) : null}
+            {pushMessage ? (
+              <Text
+                style={
+                  pushStatus === 'registered' ? styles.success : styles.hint
+                }>
+                {pushMessage}
+              </Text>
+            ) : null}
+          </View>
+
           {/* Log out */}
           <TouchableOpacity
             style={styles.logoutButton}
@@ -452,6 +798,43 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  buttonDestructive: {
+    backgroundColor: Palette.muted,
+    borderWidth: 1,
+    borderColor: Palette.destructive,
+  },
+  buttonDestructiveText: {
+    color: Palette.destructive,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  // 2FA
+  totpBlock: { gap: 12, marginTop: 14 },
+  qrWrap: {
+    alignSelf: 'center',
+    padding: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+  },
+  qr: { width: 180, height: 180 },
+  secretLabel: { fontSize: 13, color: Palette.mutedForeground },
+  codeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  code: {
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+    fontSize: 14,
+    fontWeight: '700',
+    color: Palette.foreground,
+    backgroundColor: Palette.muted,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  pushSpinner: { marginTop: 10, alignSelf: 'flex-start' },
 
   badge: {
     flexDirection: 'row',

@@ -25,10 +25,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ShareModal } from '@/components/share-modal';
 import { Palette } from '@/constants/theme';
 import { api } from '@/lib/api';
+import {
+  connectSocket,
+  type JoinNoteAck,
+  type NoteUpdatedPayload,
+  type Presence,
+} from '@/lib/socket';
 import type { Note, Tag } from '@/lib/types';
+import { useAuthStore } from '@/stores/auth';
 
 /** ms to wait after the last edit before pushing an autosave. */
 const AUTOSAVE_DELAY = 1400;
+
+/** ms to wait after the last edit before broadcasting a realtime update. */
+const REALTIME_DELAY = 400;
 
 type SaveState = 'idle' | 'saving' | 'saved';
 
@@ -63,6 +73,7 @@ const toolbarIconMap = {
 export default function NoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const currentUser = useAuthStore((s) => s.user);
 
   const [note, setNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,6 +86,8 @@ export default function NoteScreen() {
   const [tagPickerVisible, setTagPickerVisible] = useState(false);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
+  /** Other users currently viewing/editing this note (realtime presence). */
+  const [presence, setPresence] = useState<Presence[]>([]);
 
   const richText = useRef<RichEditor>(null);
   /** Latest editor HTML, kept in a ref so saving never re-renders the editor. */
@@ -85,6 +98,25 @@ export default function NoteScreen() {
   /** True when local edits have not yet been persisted. */
   const dirty = useRef(false);
   const mounted = useRef(true);
+
+  // --- Realtime refs ---------------------------------------------------------
+  /** The shared socket, once connected for this screen (null if unavailable). */
+  const socketRef = useRef<import('socket.io-client').Socket | null>(null);
+  /** Debounce timer for outgoing realtime broadcasts. */
+  const rtTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * True while the local user is actively editing. Used to suppress applying a
+   * remote update on top of in-progress local edits (and as an extra echo
+   * guard). Cleared shortly after the last keystroke.
+   */
+  const localEditing = useRef(false);
+  const localEditingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * True while we are programmatically applying a REMOTE update to the editor.
+   * onChangeContent fires as a side effect of setContentHTML; this flag stops
+   * us from re-broadcasting that change (echo loop guard).
+   */
+  const applyingRemote = useRef(false);
 
   const readOnly = note?.sharedPermission === 'READ';
   /** Owner has no sharedPermission set. Only the owner can manage sharing. */
@@ -153,21 +185,164 @@ export default function NoteScreen() {
     };
   }, [persist]);
 
+  // --- Realtime sync ---------------------------------------------------------
+  // Best-effort: connect, join the note room, mirror remote edits into the
+  // editor, and maintain a presence list. Everything is wrapped so a socket
+  // failure never breaks the editor (autosave already persists changes).
+  useEffect(() => {
+    // Only wire realtime once the note has loaded successfully.
+    if (!note) return;
+
+    let active = true;
+    let joined = false;
+    let sock: import('socket.io-client').Socket | null = null;
+
+    const onNoteUpdated = (payload: NoteUpdatedPayload) => {
+      try {
+        if (!active || payload.noteId !== id) return;
+        // Ignore our own broadcasts (echo) and updates while we're typing.
+        if (payload.userId === currentUser?.id) return;
+        if (localEditing.current) return;
+
+        // Apply remote title.
+        if (typeof payload.title === 'string') {
+          titleRef.current = payload.title;
+          setTitle(payload.title);
+        }
+        // Apply remote content, guarding the resulting onChange from echoing.
+        if (typeof payload.content === 'string') {
+          applyingRemote.current = true;
+          contentRef.current = payload.content;
+          richText.current?.setContentHTML(payload.content);
+          // Release the guard after the change has settled.
+          setTimeout(() => {
+            applyingRemote.current = false;
+          }, 50);
+        }
+      } catch {
+        applyingRemote.current = false;
+      }
+    };
+
+    const onUserJoined = (p: Presence) => {
+      if (!active) return;
+      setPresence((prev) =>
+        prev.some((u) => u.userId === p.userId) ? prev : [...prev, p],
+      );
+    };
+
+    const onUserLeft = (p: { userId: string }) => {
+      if (!active) return;
+      setPresence((prev) => prev.filter((u) => u.userId !== p.userId));
+    };
+
+    (async () => {
+      try {
+        sock = await connectSocket();
+        if (!sock || !active) return;
+        socketRef.current = sock;
+
+        sock.on('note_updated', onNoteUpdated);
+        sock.on('user_joined', onUserJoined);
+        sock.on('user_left', onUserLeft);
+
+        const doJoin = () => {
+          try {
+            sock?.emit('join_note', { noteId: id }, (ack?: JoinNoteAck) => {
+              if (!active) return;
+              if (ack?.users) setPresence(ack.users);
+            });
+            joined = true;
+          } catch {
+            // ignore
+          }
+        };
+
+        if (sock.connected) doJoin();
+        // Re-join on (re)connect so presence survives transient drops.
+        sock.on('connect', doJoin);
+      } catch {
+        // realtime unavailable; editor keeps working via autosave
+      }
+    })();
+
+    return () => {
+      active = false;
+      if (rtTimer.current) clearTimeout(rtTimer.current);
+      if (localEditingTimer.current) clearTimeout(localEditingTimer.current);
+      try {
+        if (sock) {
+          if (joined) sock.emit('leave_note', { noteId: id });
+          sock.off('note_updated', onNoteUpdated);
+          sock.off('user_joined', onUserJoined);
+          sock.off('user_left', onUserLeft);
+        }
+      } catch {
+        // ignore
+      }
+      socketRef.current = null;
+      setPresence([]);
+    };
+    // Re-run only when the note id changes (note presence is a load gate).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, note?.id, currentUser?.id]);
+
+  // --- Realtime broadcast (best-effort) --------------------------------------
+  /**
+   * Debounced broadcast of the local title+content to collaborators. No-ops
+   * when read-only, when the socket isn't connected, or while applying a
+   * remote update (echo guard).
+   */
+  const broadcastRealtime = useCallback(() => {
+    if (readOnly || applyingRemote.current) return;
+    if (rtTimer.current) clearTimeout(rtTimer.current);
+    rtTimer.current = setTimeout(() => {
+      const sock = socketRef.current;
+      if (!sock?.connected) return;
+      try {
+        sock.emit('note_update', {
+          noteId: id,
+          title: titleRef.current,
+          content: contentRef.current,
+        });
+      } catch {
+        // best-effort; autosave still persists over HTTP
+      }
+    }, REALTIME_DELAY);
+  }, [id, readOnly]);
+
+  /** Mark the editor as actively edited locally (suppresses remote overwrite). */
+  const markLocalEditing = useCallback(() => {
+    localEditing.current = true;
+    if (localEditingTimer.current) clearTimeout(localEditingTimer.current);
+    // Clear the "actively editing" flag a beat after the last keystroke so
+    // remote updates can flow in again once the user pauses.
+    localEditingTimer.current = setTimeout(() => {
+      localEditing.current = false;
+    }, 1500);
+  }, []);
+
   const onChangeTitle = useCallback(
     (text: string) => {
       setTitle(text);
       titleRef.current = text;
+      markLocalEditing();
       scheduleSave();
+      broadcastRealtime();
     },
-    [scheduleSave],
+    [scheduleSave, broadcastRealtime, markLocalEditing],
   );
 
   const onChangeContent = useCallback(
     (html: string) => {
       contentRef.current = html;
+      // setContentHTML (remote apply) triggers onChange; don't re-broadcast it.
+      if (applyingRemote.current) return;
+      markLocalEditing();
       scheduleSave();
+      broadcastRealtime();
     },
-    [scheduleSave],
+    [scheduleSave, broadcastRealtime, markLocalEditing],
   );
 
   // --- Actions ---------------------------------------------------------------
@@ -325,6 +500,25 @@ export default function NoteScreen() {
           </TouchableOpacity>
 
           <View style={styles.headerRight}>
+            {/* Realtime presence: colored dots for collaborators in this note. */}
+            {presence.length > 0 ? (
+              <View
+                style={styles.presence}
+                accessibilityLabel={`${presence.length} other ${presence.length === 1 ? 'person' : 'people'} editing`}>
+                {presence.slice(0, 3).map((p) => (
+                  <View
+                    key={p.userId}
+                    style={[
+                      styles.presenceDot,
+                      { backgroundColor: p.color || Palette.primary },
+                    ]}
+                  />
+                ))}
+                {presence.length > 3 ? (
+                  <Text style={styles.presenceMore}>+{presence.length - 3}</Text>
+                ) : null}
+              </View>
+            ) : null}
             {saveLabel ? (
               <Text style={styles.saveText}>{saveLabel}</Text>
             ) : null}
@@ -551,6 +745,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Palette.mutedForeground,
     marginRight: 4,
+  },
+  presence: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginRight: 6,
+  },
+  presenceDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: Palette.background,
+  },
+  presenceMore: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Palette.mutedForeground,
+    marginLeft: 2,
   },
   readonlyBadge: {
     flexDirection: 'row',
