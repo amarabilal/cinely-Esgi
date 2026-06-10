@@ -52,3 +52,29 @@ export interface Note {
   updatedAt: string;
   sharedPermission?: string;
 }
+
+/** A note summary as returned in the dashboard "recentNotes" list. */
+export interface RecentNote {
+  id: string;
+  title: string;
+  updatedAt: string;
+}
+
+/** A tag with usage count, as returned in the dashboard "topTags" list. */
+export interface TopTag {
+  id: string;
+  name: string;
+  color: string;
+  noteCount: number;
+}
+
+/** Response shape of GET /notes/stats. */
+export interface NotesStats {
+  totalNotes: number;
+  favoriteNotes: number;
+  archivedNotes: number;
+  sharedByMe: number;
+  sharedWithMe: number;
+  recentNotes: RecentNote[];
+  topTags: TopTag[];
+}

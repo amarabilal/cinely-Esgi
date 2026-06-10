@@ -33,6 +33,10 @@ interface AuthState {
   }) => Promise<void>;
   verify2fa: (tempToken: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** Replace the cached user (e.g. after a profile edit). */
+  setUser: (user: User) => void;
+  /** Re-fetch the current user from the backend and cache it. */
+  refreshMe: () => Promise<void>;
 }
 
 async function fetchMe(): Promise<User> {
@@ -110,5 +114,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
     await clearTokens();
     set({ user: null, status: 'unauthenticated' });
+  },
+
+  setUser: (user) => {
+    set({ user });
+  },
+
+  refreshMe: async () => {
+    const user = await fetchMe();
+    set({ user });
   },
 }));
