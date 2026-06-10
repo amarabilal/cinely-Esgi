@@ -33,6 +33,12 @@ export interface Tag {
   color: string;
 }
 
+export interface Folder {
+  id: string;
+  name: string;
+  parentId: string | null;
+}
+
 export interface Note {
   id: string;
   title: string;
