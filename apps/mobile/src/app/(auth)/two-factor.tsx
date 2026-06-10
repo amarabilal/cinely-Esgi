@@ -1,4 +1,5 @@
-import { Link, useRouter } from 'expo-router';
+import { Link, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,37 +16,37 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Palette } from '@/constants/theme';
 import { useAuthStore } from '@/stores/auth';
 
-export default function LoginScreen() {
+export default function TwoFactorScreen() {
   const router = useRouter();
-  const login = useAuthStore((s) => s.login);
+  const verify2fa = useAuthStore((s) => s.verify2fa);
+  const params = useLocalSearchParams<{ tempToken?: string }>();
+  const tempToken = params.tempToken ?? '';
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSignIn() {
+  async function handleVerify() {
     if (loading) return;
     setError(null);
+
+    if (!tempToken) {
+      setError('Your session expired. Please sign in again.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const challenge = await login(email.trim(), password);
-      if (challenge) {
-        router.push({
-          pathname: '/(auth)/two-factor',
-          params: { tempToken: challenge.tempToken },
-        });
-        return;
-      }
+      await verify2fa(tempToken, code.trim());
       router.replace('/(tabs)');
     } catch {
-      setError('Invalid email or password.');
+      setError('That code did not work. Please try again.');
     } finally {
       setLoading(false);
     }
   }
 
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !loading;
+  const canSubmit = code.trim().length > 0 && tempToken.length > 0 && !loading;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -54,32 +55,21 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.container}>
           <Text style={styles.wordmark}>Cinely</Text>
-          <Text style={styles.subtitle}>Sign in to your notes</Text>
+          <Text style={styles.subtitle}>Enter your authentication code</Text>
 
           <View style={styles.form}>
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder="6-digit or recovery code"
               placeholderTextColor={Palette.mutedForeground}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
+              value={code}
+              onChangeText={setCode}
+              keyboardType="number-pad"
+              autoCapitalize="characters"
               autoCorrect={false}
-              autoComplete="email"
+              autoComplete="one-time-code"
               editable={!loading}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor={Palette.mutedForeground}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoComplete="password"
-              editable={!loading}
-              onSubmitEditing={handleSignIn}
+              onSubmitEditing={handleVerify}
               returnKeyType="go"
             />
 
@@ -87,28 +77,19 @@ export default function LoginScreen() {
 
             <TouchableOpacity
               style={[styles.button, !canSubmit && styles.buttonDisabled]}
-              onPress={handleSignIn}
+              onPress={handleVerify}
               disabled={!canSubmit}
               activeOpacity={0.85}>
               {loading ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={styles.buttonText}>Sign in</Text>
+                <Text style={styles.buttonText}>Verify</Text>
               )}
             </TouchableOpacity>
 
-            <Link href="/(auth)/forgot-password" asChild>
+            <Link href="/(auth)/login" asChild>
               <TouchableOpacity activeOpacity={0.7}>
-                <Text style={styles.linkStrong}>Forgot password?</Text>
-              </TouchableOpacity>
-            </Link>
-
-            <Link href="/(auth)/register" asChild>
-              <TouchableOpacity activeOpacity={0.7}>
-                <Text style={styles.link}>
-                  Don&apos;t have an account?{' '}
-                  <Text style={styles.linkStrong}>Create account</Text>
-                </Text>
+                <Text style={styles.link}>Cancel</Text>
               </TouchableOpacity>
             </Link>
           </View>
@@ -167,14 +148,9 @@ const styles = StyleSheet.create({
   buttonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
   link: {
     fontSize: 14,
-    color: Palette.mutedForeground,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  linkStrong: {
-    fontSize: 14,
     color: Palette.primary,
     fontWeight: '600',
     textAlign: 'center',
+    marginTop: 8,
   },
 });

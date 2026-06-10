@@ -1,3 +1,4 @@
+import { AxiosError } from 'axios';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -15,37 +16,58 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Palette } from '@/constants/theme';
 import { useAuthStore } from '@/stores/auth';
 
-export default function LoginScreen() {
-  const router = useRouter();
-  const login = useAuthStore((s) => s.login);
+/** Pulls a server-provided validation message out of an axios error, if any. */
+function serverMessage(err: unknown): string | null {
+  if (err instanceof AxiosError) {
+    const data = err.response?.data as { message?: string | string[] } | undefined;
+    if (data?.message) {
+      return Array.isArray(data.message) ? data.message[0] : data.message;
+    }
+  }
+  return null;
+}
 
+export default function RegisterScreen() {
+  const router = useRouter();
+  const register = useAuthStore((s) => s.register);
+
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSignIn() {
+  async function handleCreate() {
     if (loading) return;
     setError(null);
     setLoading(true);
     try {
-      const challenge = await login(email.trim(), password);
-      if (challenge) {
-        router.push({
-          pathname: '/(auth)/two-factor',
-          params: { tempToken: challenge.tempToken },
-        });
-        return;
-      }
+      await register({
+        email: email.trim(),
+        password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      });
       router.replace('/(tabs)');
-    } catch {
-      setError('Invalid email or password.');
+    } catch (err) {
+      const status = err instanceof AxiosError ? err.response?.status : undefined;
+      if (status === 409) {
+        setError('That email is already in use.');
+      } else {
+        setError(serverMessage(err) ?? 'Could not create your account. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
   }
 
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !loading;
+  const canSubmit =
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    email.trim().length > 0 &&
+    password.length > 0 &&
+    !loading;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -54,9 +76,29 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.container}>
           <Text style={styles.wordmark}>Cinely</Text>
-          <Text style={styles.subtitle}>Sign in to your notes</Text>
+          <Text style={styles.subtitle}>Create your account</Text>
 
           <View style={styles.form}>
+            <TextInput
+              style={styles.input}
+              placeholder="First name"
+              placeholderTextColor={Palette.mutedForeground}
+              value={firstName}
+              onChangeText={setFirstName}
+              autoCapitalize="words"
+              autoComplete="given-name"
+              editable={!loading}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Last name"
+              placeholderTextColor={Palette.mutedForeground}
+              value={lastName}
+              onChangeText={setLastName}
+              autoCapitalize="words"
+              autoComplete="family-name"
+              editable={!loading}
+            />
             <TextInput
               style={styles.input}
               placeholder="Email"
@@ -77,37 +119,34 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               secureTextEntry
               autoCapitalize="none"
-              autoComplete="password"
+              autoComplete="new-password"
               editable={!loading}
-              onSubmitEditing={handleSignIn}
+              onSubmitEditing={handleCreate}
               returnKeyType="go"
             />
+
+            <Text style={styles.hint}>
+              At least 12 characters, with letters, digits, and symbols.
+            </Text>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <TouchableOpacity
               style={[styles.button, !canSubmit && styles.buttonDisabled]}
-              onPress={handleSignIn}
+              onPress={handleCreate}
               disabled={!canSubmit}
               activeOpacity={0.85}>
               {loading ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={styles.buttonText}>Sign in</Text>
+                <Text style={styles.buttonText}>Create account</Text>
               )}
             </TouchableOpacity>
 
-            <Link href="/(auth)/forgot-password" asChild>
-              <TouchableOpacity activeOpacity={0.7}>
-                <Text style={styles.linkStrong}>Forgot password?</Text>
-              </TouchableOpacity>
-            </Link>
-
-            <Link href="/(auth)/register" asChild>
+            <Link href="/(auth)/login" asChild>
               <TouchableOpacity activeOpacity={0.7}>
                 <Text style={styles.link}>
-                  Don&apos;t have an account?{' '}
-                  <Text style={styles.linkStrong}>Create account</Text>
+                  Already have an account? <Text style={styles.linkStrong}>Sign in</Text>
                 </Text>
               </TouchableOpacity>
             </Link>
@@ -150,6 +189,11 @@ const styles = StyleSheet.create({
     color: Palette.foreground,
     backgroundColor: Palette.card,
   },
+  hint: {
+    fontSize: 13,
+    color: Palette.mutedForeground,
+    textAlign: 'center',
+  },
   error: {
     color: Palette.destructive,
     fontSize: 14,
@@ -171,10 +215,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  linkStrong: {
-    fontSize: 14,
-    color: Palette.primary,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
+  linkStrong: { color: Palette.primary, fontWeight: '600' },
 });
