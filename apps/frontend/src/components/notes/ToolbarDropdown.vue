@@ -50,8 +50,8 @@ onBeforeUnmount(() => {
       aria-haspopup="menu"
       :aria-expanded="isOpen"
       @click="toggle"
-      class="flex size-8 items-center justify-center rounded-md transition-colors disabled:opacity-30 disabled:cursor-default"
-      :class="(isOpen || active) ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'"
+      class="flex size-9 appearance-none items-center justify-center rounded-lg border border-transparent bg-transparent transition-colors [-webkit-tap-highlight-color:transparent] disabled:opacity-30 disabled:cursor-default"
+      :class="(isOpen || active) ? 'border-border bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'"
     >
       <component :is="icon" class="size-4" />
     </button>

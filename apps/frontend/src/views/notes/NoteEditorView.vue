@@ -963,6 +963,11 @@ function insertImage() {
   height: 2.25rem;
   border-radius: 0.5rem;
   border: 1px solid transparent;
+  /* Kill the native WebView button chrome (the grey boxes on Android). */
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
   transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 }
 .tbtn:disabled { opacity: 0.3; cursor: default; }
