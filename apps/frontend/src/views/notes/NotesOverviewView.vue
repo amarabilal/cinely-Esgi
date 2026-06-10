@@ -125,8 +125,8 @@ const chipArchived = computed(() => route.path === '/notes/archived');
 
 function chipClass(active: boolean) {
   return [
-    'flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 text-xs font-medium transition-colors',
-    active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
+    'flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-xs font-medium transition-colors',
+    active ? 'bg-primary text-primary-foreground shadow-sm' : 'border border-border bg-muted text-muted-foreground',
   ];
 }
 
@@ -222,7 +222,7 @@ function goArchived() {
         </button>
       </div>
 
-      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div class="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
         <NoteCard
           v-for="note in visibleNotes"
           :key="note.id"

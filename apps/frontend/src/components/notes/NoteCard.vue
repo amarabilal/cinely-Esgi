@@ -90,7 +90,7 @@ async function onTagDrop(event: DragEvent) {
   <div
     :data-note-id="note.id"
     draggable="true"
-    class="group relative flex w-full min-w-0 cursor-grab rounded-md border bg-card p-3 text-left text-card-foreground transition-all duration-150 hover:bg-accent/60 active:cursor-grabbing"
+    class="group relative flex w-full min-w-0 cursor-grab rounded-xl border bg-card p-3.5 text-left text-card-foreground shadow-sm transition-all duration-150 hover:bg-accent/60 hover:shadow active:cursor-grabbing"
     :class="[
       isActive ? 'border-primary bg-accent' : 'border-border',
       isDragging ? 'scale-[0.98] opacity-40 ring-2 ring-primary' : '',
@@ -128,10 +128,10 @@ async function onTagDrop(event: DragEvent) {
       </div>
 
       <div class="min-w-0 flex-1 space-y-1 transition-transform duration-200 ease-out group-hover:translate-x-3">
-        <h3 class="truncate text-sm font-medium">
+        <h3 class="truncate text-[15px] font-semibold">
           {{ note.title || 'Untitled' }}
         </h3>
-        <p class="line-clamp-2 text-xs leading-5 text-muted-foreground">
+        <p class="line-clamp-2 text-[13px] leading-5 text-muted-foreground">
           {{ snippet || 'No additional text' }}
         </p>
 
