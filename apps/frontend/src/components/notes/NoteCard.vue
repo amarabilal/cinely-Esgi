@@ -115,7 +115,7 @@ async function onTagDrop(event: DragEvent) {
       <GripVertical class="size-3.5" />
     </span>
 
-    <div class="flex min-w-0 flex-1 items-start gap-3">
+    <div class="flex min-w-0 flex-1 items-start gap-4">
       <div class="transition-transform duration-200 ease-out group-hover:translate-x-3">
         <div
           v-if="imageUrl"
