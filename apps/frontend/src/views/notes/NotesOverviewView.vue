@@ -175,7 +175,7 @@ function goArchived() {
           {{ displayedNotes.length }} note{{ displayedNotes.length === 1 ? '' : 's' }}
         </p>
       </div>
-      <Button @click="newNote">
+      <Button class="hidden md:inline-flex" @click="newNote">
         <Plus class="size-4" />
         New note
       </Button>
@@ -195,7 +195,8 @@ function goArchived() {
     </template>
 
     <template v-else>
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <!-- Stat cards (Total / This week / Today) are desktop-only; hidden on mobile to declutter. -->
+      <div class="hidden gap-3 md:grid md:grid-cols-3">
         <button
           v-for="stat in stats"
           :key="stat.label"
