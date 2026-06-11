@@ -147,7 +147,7 @@ function goArchived() {
 <template>
   <div class="mx-auto w-full max-w-6xl space-y-6 overflow-y-auto p-4 sm:p-6">
     <!-- Mobile-only filter chips (desktop relies on the sidebar). -->
-    <div class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-thin md:hidden">
+    <div class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none md:hidden">
       <button type="button" :class="chipClass(chipAll)" @click="goAll">
         All
       </button>

@@ -416,6 +416,11 @@ button,
      so the web layout is unchanged. Requires viewport-fit=cover in the
      viewport meta to be non-zero. */
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  /* Generous bottom padding for bottom sheets: breathing room + the inset. */
+  .pb-safe-lg { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+  /* Scroll without a visible scrollbar (horizontal chip rows). */
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
   .pt-safe { padding-top: env(safe-area-inset-top); }
   .inset-safe-b { bottom: calc(1rem + env(safe-area-inset-bottom)); }
   .inset-safe-r { right: calc(1rem + env(safe-area-inset-right)); }

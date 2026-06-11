@@ -98,7 +98,7 @@ async function handleCreateFolder() {
     <Transition name="sheet-panel">
       <div
         v-if="open"
-        class="fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl border-t bg-background p-4 pb-safe md:hidden"
+        class="fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl border-t bg-background p-4 pb-safe-lg md:hidden"
         role="dialog"
         aria-label="Filters"
       >

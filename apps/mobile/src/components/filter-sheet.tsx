@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Palette } from '@/constants/theme';
 import { api } from '@/lib/api';
@@ -45,6 +45,7 @@ export function FilterSheet({
   onSelectFolder,
   onSelectTag,
 }: FilterSheetProps) {
+  const insets = useSafeAreaInsets();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
@@ -230,10 +231,16 @@ export function FilterSheet({
       animationType="slide"
       onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
-      <SafeAreaView style={styles.sheetWrap} edges={['bottom']}>
+      <View style={styles.sheetWrap} pointerEvents="box-none">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.sheet}>
+          {/* Bottom padding lives INSIDE the sheet so the panel reaches the screen
+              edge while content clears gesture bars / home indicators. */}
+          <View
+            style={[
+              styles.sheet,
+              { paddingBottom: Math.max(insets.bottom, 16) + 20 },
+            ]}>
             <View style={styles.grabber} />
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Filters</Text>
@@ -400,7 +407,7 @@ export function FilterSheet({
             )}
           </View>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </View>
 
       {/* Inline rename modal (Android fallback + tag recolor) */}
       <Modal
