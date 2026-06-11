@@ -515,7 +515,7 @@ function insertImage() {
             </button>
           </Badge>
 
-          <div class="w-44">
+          <div class="w-full sm:w-44">
             <TagSuggestionInput
               :existing-tag-ids="currentTagIds"
               @select="handleTagSelect"
@@ -523,7 +523,7 @@ function insertImage() {
           </div>
         </div>
 
-        <div class="ml-auto w-48 shrink-0">
+        <div class="w-full shrink-0 sm:ml-auto sm:w-48">
           <FolderPicker
             :model-value="store.currentNote.folderId"
             :folders="store.folders"
@@ -923,10 +923,15 @@ function insertImage() {
 
 <style scoped>
 :deep(.prose-editor) {
-  min-height: 58vh;
+  min-height: 40dvh;
   color: hsl(var(--foreground) / 0.9);
   font-size: 0.9375rem;
   line-height: 1.75;
+}
+@media (min-width: 768px) {
+  :deep(.prose-editor) {
+    min-height: 58vh;
+  }
 }
 :deep(.prose-editor h1) { font-size: 1.5rem; font-weight: 700; margin: 1rem 0 0.5rem; color: hsl(var(--foreground)); }
 :deep(.prose-editor h2) { font-size: 1.25rem; font-weight: 600; margin: 0.875rem 0 0.375rem; color: hsl(var(--foreground)); }

@@ -61,7 +61,7 @@ onBeforeUnmount(() => {
         v-if="isOpen"
         role="menu"
         @click="close"
-        class="menu-panel absolute left-0 top-full z-50 mt-1 min-w-[12rem] overflow-hidden rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-lg"
+        class="menu-panel absolute left-0 top-full z-50 mt-1 min-w-[12rem] max-w-[min(90vw,16rem)] max-h-[60vh] overflow-y-auto rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-lg"
       >
         <div class="px-2 pb-1 pt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{{ title }}</div>
         <slot :close="close" />

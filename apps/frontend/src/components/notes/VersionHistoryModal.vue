@@ -26,11 +26,11 @@ function formatDate(dateStr: string) {
     <Transition name="modal">
       <div
         v-if="open"
-        class="fixed inset-0 z-[60] flex items-start justify-center bg-background/70 p-4 pt-[18vh] backdrop-blur-sm"
+        class="fixed inset-0 z-[60] flex items-start justify-center bg-background/70 p-4 pt-[8vh] sm:pt-[18vh] backdrop-blur-sm"
         @click.self="open = false"
       >
         <div
-          class="modal-panel w-full max-w-md rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl"
+          class="modal-panel w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl"
           role="dialog"
           aria-modal="true"
           aria-label="Version history"
@@ -41,7 +41,7 @@ function formatDate(dateStr: string) {
               <History class="size-4 text-primary" />
               Version history
             </div>
-            <button aria-label="Close" class="text-muted-foreground transition-colors hover:text-foreground" @click="open = false">
+            <button aria-label="Close" class="-m-3 flex items-center justify-center rounded-md p-3 text-muted-foreground transition-colors hover:text-foreground" @click="open = false">
               <X class="size-4" />
             </button>
           </div>
@@ -70,7 +70,7 @@ function formatDate(dateStr: string) {
                     :title="`Restore v${v.versionNumber}`"
                     :aria-label="`Restore version ${v.versionNumber}`"
                     @click="emit('restore', v.id)"
-                    class="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary">
+                    class="-m-2 flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary sm:m-0 sm:min-h-0 sm:min-w-0">
                     <RotateCcw class="size-3.5" />
                   </button>
                 </div>

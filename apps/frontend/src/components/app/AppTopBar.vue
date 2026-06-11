@@ -54,7 +54,7 @@ const menuOpen = ref(false);
 
         <div
           v-if="menuOpen"
-          class="absolute right-0 top-10 z-50 w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg"
+          class="absolute right-0 top-10 z-50 w-48 max-w-[calc(100vw-1rem)] rounded-md border bg-popover p-1 text-popover-foreground shadow-lg"
         >
           <RouterLink
             to="/dashboard"

@@ -61,7 +61,7 @@ async function submit() {
     </template>
 
     <form @submit.prevent="submit" class="space-y-4">
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div class="space-y-1.5">
           <label for="firstName" class="text-sm font-medium text-foreground">First name</label>
           <input

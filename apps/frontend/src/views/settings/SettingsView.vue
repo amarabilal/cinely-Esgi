@@ -154,16 +154,16 @@ function formatDate(dateStr: string) {
         <h2 class="text-base font-semibold text-foreground">Personal Information</h2>
         <p v-if="store.profile" class="text-sm text-muted-foreground">{{ store.profile.email }}</p>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-foreground">First name</label>
             <input v-model="firstName" type="text"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
           </div>
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-foreground">Last name</label>
             <input v-model="lastName" type="text"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
           </div>
         </div>
 
@@ -205,12 +205,12 @@ function formatDate(dateStr: string) {
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-foreground">Current password</label>
             <input v-model="currentPassword" type="password"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
           </div>
           <div class="space-y-1.5">
             <label class="text-sm font-medium text-foreground">New password</label>
             <input v-model="newPassword" type="password" minlength="8"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
           </div>
 
           <p v-if="passwordSuccess" class="text-sm text-primary">{{ passwordSuccess }}</p>
@@ -239,7 +239,7 @@ function formatDate(dateStr: string) {
           <div v-if="recoveryCodes.length > 0" class="bg-muted border border-border rounded-xl p-4 space-y-3">
             <p class="text-sm font-semibold text-foreground">Save your recovery codes</p>
             <p class="text-xs text-muted-foreground">Store these codes safely. Each code can only be used once if you lose access to your authenticator app.</p>
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <code v-for="code in recoveryCodes" :key="code"
                 class="bg-background border border-border rounded px-3 py-1.5 text-xs font-mono text-foreground text-center">
                 {{ code }}
@@ -269,7 +269,7 @@ function formatDate(dateStr: string) {
               <div class="space-y-1.5">
                 <label class="text-sm font-medium text-foreground">Verification code</label>
                 <input v-model="totpCode" type="text" maxlength="6" placeholder="000000"
-                  class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-center tracking-widest shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
+                  class="w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm text-center tracking-widest shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
               </div>
               <p v-if="totpError" class="text-sm text-destructive">{{ totpError }}</p>
               <div class="flex gap-2">
@@ -284,7 +284,7 @@ function formatDate(dateStr: string) {
             <div class="space-y-3">
               <p class="text-sm text-muted-foreground">Enter your current 2FA code to disable it.</p>
               <input v-model="disableCode" type="text" maxlength="6" placeholder="000000"
-                class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-center tracking-widest shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm text-center tracking-widest shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
               <p v-if="disableError" class="text-sm text-destructive">{{ disableError }}</p>
               <Button variant="destructive" @click="disableTotp">Disable 2FA</Button>
             </div>

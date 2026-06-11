@@ -196,7 +196,7 @@ onBeforeUnmount(() => {
     <div
       v-if="isOpen"
       role="menu"
-      class="menu-panel absolute right-0 z-50 mt-1 w-56 overflow-hidden rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-lg"
+      class="menu-panel absolute right-0 z-50 mt-1 w-56 max-w-[min(90vw,14rem)] overflow-hidden rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-lg"
     >
       <div class="px-2 pb-1 pt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Share &amp; export</div>
       <button
