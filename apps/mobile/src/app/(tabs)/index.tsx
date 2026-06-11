@@ -78,6 +78,7 @@ export default function NotesScreen() {
   const router = useRouter();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<ActiveFilter>({ kind: 'all' });
@@ -97,9 +98,13 @@ export default function NotesScreen() {
       (async () => {
         try {
           const { data } = await api.get<Note[]>(filterToRequest(filter));
-          if (active) setNotes(data);
+          if (active) {
+            setNotes(data);
+            setLoadError(false);
+          }
         } catch {
           // leave existing list; pull-to-refresh can retry
+          if (active) setLoadError(true);
         } finally {
           if (active) setLoading(false);
         }
@@ -114,8 +119,10 @@ export default function NotesScreen() {
     setRefreshing(true);
     try {
       await loadNotes();
+      setLoadError(false);
     } catch {
-      // ignore; keep current list
+      // keep current list
+      setLoadError(true);
     } finally {
       setRefreshing(false);
     }
@@ -146,7 +153,9 @@ export default function NotesScreen() {
           style={styles.addButton}
           onPress={handleCreate}
           disabled={creating}
-          activeOpacity={0.8}>
+          hitSlop={4}
+          activeOpacity={0.8}
+          accessibilityLabel="Create note">
           {creating ? (
             <ActivityIndicator color="#ffffff" size="small" />
           ) : (
@@ -229,22 +238,36 @@ export default function NotesScreen() {
           )}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={Palette.primary}
+              colors={[Palette.primary]}
+            />
+          }
+          ListHeaderComponent={
+            loadError ? (
+              <Text style={styles.errorText}>
+                Couldn’t load notes. Pull down to retry.
+              </Text>
+            ) : null
           }
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons
-                name="document-text-outline"
-                size={48}
-                color={Palette.border}
-              />
-              <Text style={styles.emptyTitle}>No notes here</Text>
-              <Text style={styles.emptySubtitle}>
-                {filter.kind === 'all'
-                  ? 'Tap + to create your first note.'
-                  : 'Nothing matches this filter yet.'}
-              </Text>
-            </View>
+            loadError ? null : (
+              <View style={styles.empty}>
+                <Ionicons
+                  name="document-text-outline"
+                  size={48}
+                  color={Palette.border}
+                />
+                <Text style={styles.emptyTitle}>No notes here</Text>
+                <Text style={styles.emptySubtitle}>
+                  {filter.kind === 'all'
+                    ? 'Tap + to create your first note.'
+                    : 'Nothing matches this filter yet.'}
+                </Text>
+              </View>
+            )
           }
         />
       )}
@@ -314,4 +337,10 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: Palette.foreground },
   emptySubtitle: { fontSize: 14, color: Palette.mutedForeground },
+  errorText: {
+    fontSize: 14,
+    color: Palette.destructive,
+    textAlign: 'center',
+    paddingVertical: 12,
+  },
 });

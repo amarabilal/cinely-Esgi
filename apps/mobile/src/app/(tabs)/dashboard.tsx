@@ -38,6 +38,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const [stats, setStats] = useState<NotesStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchStats = useCallback(async () => {
@@ -52,9 +53,13 @@ export default function DashboardScreen() {
       (async () => {
         try {
           const { data } = await api.get<NotesStats>('/notes/stats');
-          if (active) setStats(data);
+          if (active) {
+            setStats(data);
+            setLoadError(false);
+          }
         } catch {
           // keep any previous stats; pull-to-refresh can retry
+          if (active) setLoadError(true);
         } finally {
           if (active) setLoading(false);
         }
@@ -69,8 +74,10 @@ export default function DashboardScreen() {
     setRefreshing(true);
     try {
       await fetchStats();
+      setLoadError(false);
     } catch {
-      // ignore; keep current view
+      // keep current view
+      setLoadError(true);
     } finally {
       setRefreshing(false);
     }
@@ -90,8 +97,19 @@ export default function DashboardScreen() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={Palette.primary}
+              colors={[Palette.primary]}
+            />
           }>
+          {loadError ? (
+            <Text style={styles.errorText}>
+              Couldn’t load stats. Pull down to retry.
+            </Text>
+          ) : null}
+
           {/* Stat cards grid */}
           <View style={styles.grid}>
             {STAT_CARDS.map((card) => (
@@ -204,9 +222,11 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 13, color: Palette.mutedForeground, marginTop: 2 },
 
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: '700',
-    color: Palette.foreground,
+    color: Palette.mutedForeground,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginTop: 16,
     marginBottom: 10,
   },
@@ -257,5 +277,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Palette.mutedForeground,
     paddingVertical: 16,
+  },
+  errorText: {
+    fontSize: 14,
+    color: Palette.destructive,
+    textAlign: 'center',
+    paddingVertical: 4,
   },
 });

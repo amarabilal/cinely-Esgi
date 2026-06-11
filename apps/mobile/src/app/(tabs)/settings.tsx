@@ -316,7 +316,10 @@ export default function SettingsScreen() {
             <View style={styles.cardHeader}>
               <Text style={styles.cardTitle}>Profile</Text>
               {!editing ? (
-                <TouchableOpacity onPress={startEditing} activeOpacity={0.7}>
+                <TouchableOpacity
+                  onPress={startEditing}
+                  activeOpacity={0.7}
+                  hitSlop={12}>
                   <Text style={styles.editLink}>Edit profile</Text>
                 </TouchableOpacity>
               ) : null}

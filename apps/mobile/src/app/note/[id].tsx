@@ -20,7 +20,7 @@ import {
   RichEditor,
   RichToolbar,
 } from 'react-native-pell-rich-editor';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ShareModal } from '@/components/share-modal';
 import { Palette } from '@/constants/theme';
@@ -73,6 +73,7 @@ const toolbarIconMap = {
 export default function NoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const currentUser = useAuthStore((s) => s.user);
 
   const [note, setNote] = useState<Note | null>(null);
@@ -601,7 +602,8 @@ export default function NoteScreen() {
               </Text>
               {canEdit ? (
                 <TouchableOpacity
-                  hitSlop={6}
+                  hitSlop={12}
+                  activeOpacity={0.7}
                   onPress={() => handleRemoveTag(tag)}
                   accessibilityLabel={`Remove tag ${tag.name}`}>
                   <Ionicons name="close" size={14} color={Palette.mutedForeground} />
@@ -672,14 +674,21 @@ export default function NoteScreen() {
           style={styles.tagBackdrop}
           onPress={() => setTagPickerVisible(false)}
         />
-        <SafeAreaView style={styles.tagSheetWrap} edges={['bottom']}>
-          <View style={styles.tagSheet}>
+        <View style={styles.tagSheetWrap} pointerEvents="box-none">
+          {/* Bottom padding lives INSIDE the sheet so the panel reaches the screen
+              edge while content clears gesture bars / home indicators. */}
+          <View
+            style={[
+              styles.tagSheet,
+              { paddingBottom: Math.max(insets.bottom, 16) + 20 },
+            ]}>
             <View style={styles.tagGrabber} />
             <View style={styles.tagSheetHeader}>
               <Text style={styles.tagSheetTitle}>Add a tag</Text>
               <TouchableOpacity
                 onPress={() => setTagPickerVisible(false)}
-                hitSlop={8}
+                hitSlop={10}
+                activeOpacity={0.7}
                 accessibilityLabel="Close tag picker">
                 <Ionicons name="close" size={24} color={Palette.mutedForeground} />
               </TouchableOpacity>
@@ -715,7 +724,7 @@ export default function NoteScreen() {
               </ScrollView>
             )}
           </View>
-        </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -734,15 +743,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveText: {
     fontSize: 13,
+    fontWeight: '500',
     color: Palette.mutedForeground,
     marginRight: 4,
   },
@@ -780,6 +790,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '800',
+    // Explicit lineHeight so descenders (g, y, p) aren't clipped by the input.
+    lineHeight: 34,
     color: Palette.foreground,
     paddingHorizontal: 20,
     paddingTop: 4,

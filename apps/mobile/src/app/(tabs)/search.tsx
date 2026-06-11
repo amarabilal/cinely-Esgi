@@ -28,12 +28,15 @@ export default function SearchScreen() {
   /** True once a search has run, so we can show "No results" instead of the
    * initial prompt. */
   const [searched, setSearched] = useState(false);
+  /** True when the last search request failed (network/server). */
+  const [searchError, setSearchError] = useState(false);
 
   useEffect(() => {
     const trimmed = query.trim();
     if (trimmed.length < MIN_QUERY_LENGTH) {
       setResults([]);
       setSearched(false);
+      setSearchError(false);
       setLoading(false);
       return;
     }
@@ -48,11 +51,13 @@ export default function SearchScreen() {
         if (active) {
           setResults(data);
           setSearched(true);
+          setSearchError(false);
         }
       } catch {
         if (active) {
           setResults([]);
           setSearched(true);
+          setSearchError(true);
         }
       } finally {
         if (active) setLoading(false);
@@ -96,7 +101,8 @@ export default function SearchScreen() {
           {query.length > 0 && (
             <TouchableOpacity
               onPress={() => setQuery('')}
-              hitSlop={8}
+              hitSlop={13}
+              activeOpacity={0.7}
               accessibilityLabel="Clear search">
               <Ionicons
                 name="close-circle"
@@ -132,12 +138,22 @@ export default function SearchScreen() {
                 color={Palette.border}
               />
               <Text style={styles.emptyTitle}>
-                {searched ? 'No results' : 'Search your notes'}
+                {searchError
+                  ? 'Search failed'
+                  : searched
+                    ? 'No results'
+                    : 'Search your notes'}
               </Text>
-              <Text style={styles.emptySubtitle}>
-                {searched
-                  ? 'Try a different keyword.'
-                  : 'Find notes by title or content.'}
+              <Text
+                style={[
+                  styles.emptySubtitle,
+                  searchError && styles.errorText,
+                ]}>
+                {searchError
+                  ? 'Something went wrong. Try again.'
+                  : searched
+                    ? 'Try a different keyword.'
+                    : 'Find notes by title or content.'}
               </Text>
             </View>
           }
@@ -178,4 +194,5 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 80, gap: 8 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: Palette.foreground },
   emptySubtitle: { fontSize: 14, color: Palette.mutedForeground },
+  errorText: { color: Palette.destructive },
 });

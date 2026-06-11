@@ -14,6 +14,7 @@ export default function TabsLayout() {
           backgroundColor: Palette.card,
           borderTopColor: Palette.border,
         },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}>
       <Tabs.Screen
         name="index"

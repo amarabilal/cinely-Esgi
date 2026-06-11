@@ -246,7 +246,8 @@ export function FilterSheet({
               <Text style={styles.sheetTitle}>Filters</Text>
               <TouchableOpacity
                 onPress={onClose}
-                hitSlop={8}
+                hitSlop={10}
+                activeOpacity={0.7}
                 accessibilityLabel="Close filters">
                 <Ionicons name="close" size={24} color={Palette.mutedForeground} />
               </TouchableOpacity>
@@ -285,6 +286,7 @@ export function FilterSheet({
                       <TouchableOpacity
                         hitSlop={8}
                         style={styles.rowAction}
+                        activeOpacity={0.7}
                         onPress={() => folderActions(folder)}
                         accessibilityLabel={`Edit folder ${folder.name}`}>
                         <Ionicons
@@ -313,6 +315,8 @@ export function FilterSheet({
                   {newFolder.trim() ? (
                     <TouchableOpacity
                       style={styles.createBtn}
+                      activeOpacity={0.85}
+                      hitSlop={5}
                       onPress={handleCreateFolder}
                       disabled={creatingFolder}>
                       {creatingFolder ? (
@@ -349,6 +353,7 @@ export function FilterSheet({
                       <TouchableOpacity
                         hitSlop={8}
                         style={styles.rowAction}
+                        activeOpacity={0.7}
                         onPress={() => tagActions(tag)}
                         accessibilityLabel={`Edit tag ${tag.name}`}>
                         <Ionicons
@@ -379,6 +384,8 @@ export function FilterSheet({
                   {newTag.trim() ? (
                     <TouchableOpacity
                       style={styles.createBtn}
+                      activeOpacity={0.85}
+                      hitSlop={5}
                       onPress={handleCreateTag}
                       disabled={creatingTag}>
                       {creatingTag ? (
@@ -394,6 +401,8 @@ export function FilterSheet({
                     <TouchableOpacity
                       key={c}
                       onPress={() => setNewTagColor(c)}
+                      hitSlop={9}
+                      activeOpacity={0.7}
                       accessibilityLabel={`Pick color ${c}`}
                       style={[
                         styles.colorSwatch,
@@ -438,6 +447,9 @@ export function FilterSheet({
                   <TouchableOpacity
                     key={c}
                     onPress={() => setRenameColor(c)}
+                    hitSlop={9}
+                    activeOpacity={0.7}
+                    accessibilityLabel={`Pick color ${c}`}
                     style={[
                       styles.colorSwatch,
                       { backgroundColor: c },
@@ -450,11 +462,15 @@ export function FilterSheet({
             <View style={styles.dialogActions}>
               <TouchableOpacity
                 style={styles.dialogCancel}
+                activeOpacity={0.7}
+                hitSlop={4}
                 onPress={() => setRenameTarget(null)}>
                 <Text style={styles.dialogCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.dialogSave}
+                activeOpacity={0.85}
+                hitSlop={4}
                 onPress={submitRename}>
                 <Text style={styles.dialogSaveText}>Save</Text>
               </TouchableOpacity>

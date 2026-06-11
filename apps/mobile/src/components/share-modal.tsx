@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Palette } from '@/constants/theme';
 import { api } from '@/lib/api';
@@ -39,6 +39,7 @@ function errorMessage(err: unknown, fallback: string): string {
 }
 
 export function ShareModal({ visible, noteId, onClose }: ShareModalProps) {
+  const insets = useSafeAreaInsets();
   const [shares, setShares] = useState<NoteShare[]>([]);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -154,16 +155,23 @@ export function ShareModal({ visible, noteId, onClose }: ShareModalProps) {
       animationType="slide"
       onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
-      <SafeAreaView style={styles.sheetWrap} edges={['bottom']}>
+      <View style={styles.sheetWrap} pointerEvents="box-none">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.sheet}>
+          {/* Bottom padding lives INSIDE the sheet so the panel reaches the screen
+              edge while content clears gesture bars / home indicators. */}
+          <View
+            style={[
+              styles.sheet,
+              { paddingBottom: Math.max(insets.bottom, 16) + 20 },
+            ]}>
             <View style={styles.grabber} />
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Share note</Text>
               <TouchableOpacity
                 onPress={onClose}
-                hitSlop={8}
+                hitSlop={10}
+                activeOpacity={0.7}
                 accessibilityLabel="Close share">
                 <Ionicons name="close" size={24} color={Palette.mutedForeground} />
               </TouchableOpacity>
@@ -256,6 +264,7 @@ export function ShareModal({ visible, noteId, onClose }: ShareModalProps) {
                     <TouchableOpacity
                       style={styles.permPill}
                       activeOpacity={0.7}
+                      hitSlop={8}
                       onPress={() => handleTogglePermission(s)}
                       disabled={busyId === s.id}>
                       <Text style={styles.permPillText}>
@@ -268,7 +277,8 @@ export function ShareModal({ visible, noteId, onClose }: ShareModalProps) {
                       />
                     </TouchableOpacity>
                     <TouchableOpacity
-                      hitSlop={8}
+                      hitSlop={11}
+                      activeOpacity={0.7}
                       onPress={() => handleRevoke(s)}
                       disabled={busyId === s.id}
                       accessibilityLabel={`Remove ${s.sharedWith.email}`}>
@@ -288,7 +298,7 @@ export function ShareModal({ visible, noteId, onClose }: ShareModalProps) {
             )}
           </View>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }

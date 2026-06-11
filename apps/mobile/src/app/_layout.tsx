@@ -1,4 +1,5 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -61,6 +62,8 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
+      {/* Light theme only: dark icons/text on the white background, app-wide. */}
+      <StatusBar style="dark" />
       <AuthGate>
         <Stack screenOptions={{ headerShown: false }} />
       </AuthGate>
