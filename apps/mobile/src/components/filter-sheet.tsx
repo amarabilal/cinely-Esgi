@@ -14,10 +14,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { Palette } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { useSheetLayout } from '@/lib/sheet';
 import type { Folder, Tag } from '@/lib/types';
 
 interface FilterSheetProps {
@@ -45,7 +44,7 @@ export function FilterSheet({
   onSelectFolder,
   onSelectTag,
 }: FilterSheetProps) {
-  const insets = useSafeAreaInsets();
+  const sheetLayout = useSheetLayout();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
@@ -234,12 +233,15 @@ export function FilterSheet({
       <View style={styles.sheetWrap} pointerEvents="box-none">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          {/* Bottom padding lives INSIDE the sheet so the panel reaches the screen
-              edge while content clears gesture bars / home indicators. */}
+          {/* Bottom padding lives INSIDE the sheet so the panel reaches the modal's
+              bottom edge while content keeps comfortable clearance (see useSheetLayout). */}
           <View
             style={[
               styles.sheet,
-              { paddingBottom: Math.max(insets.bottom, 16) + 20 },
+              {
+                paddingBottom: sheetLayout.paddingBottom,
+                maxHeight: sheetLayout.maxHeight(0.8),
+              },
             ]}>
             <View style={styles.grabber} />
             <View style={styles.sheetHeader}>
@@ -501,8 +503,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 12,
-    maxHeight: '80%',
   },
   grabber: {
     alignSelf: 'center',

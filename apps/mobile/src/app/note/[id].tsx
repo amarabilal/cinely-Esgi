@@ -20,11 +20,12 @@ import {
   RichEditor,
   RichToolbar,
 } from 'react-native-pell-rich-editor';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ShareModal } from '@/components/share-modal';
 import { Palette } from '@/constants/theme';
 import { api } from '@/lib/api';
+import { useSheetLayout } from '@/lib/sheet';
 import {
   connectSocket,
   type JoinNoteAck,
@@ -73,7 +74,7 @@ const toolbarIconMap = {
 export default function NoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const sheetLayout = useSheetLayout();
   const currentUser = useAuthStore((s) => s.user);
 
   const [note, setNote] = useState<Note | null>(null);
@@ -680,7 +681,10 @@ export default function NoteScreen() {
           <View
             style={[
               styles.tagSheet,
-              { paddingBottom: Math.max(insets.bottom, 16) + 20 },
+              {
+                paddingBottom: sheetLayout.paddingBottom,
+                maxHeight: sheetLayout.maxHeight(0.7),
+              },
             ]}>
             <View style={styles.tagGrabber} />
             <View style={styles.tagSheetHeader}>
@@ -850,8 +854,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 12,
-    maxHeight: '70%',
   },
   tagGrabber: {
     alignSelf: 'center',

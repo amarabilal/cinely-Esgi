@@ -15,9 +15,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Palette } from '@/constants/theme';
+import { useSheetLayout } from '@/lib/sheet';
 import { api } from '@/lib/api';
 import type { NoteShare, SharePermission } from '@/lib/types';
 
@@ -39,7 +39,7 @@ function errorMessage(err: unknown, fallback: string): string {
 }
 
 export function ShareModal({ visible, noteId, onClose }: ShareModalProps) {
-  const insets = useSafeAreaInsets();
+  const sheetLayout = useSheetLayout();
   const [shares, setShares] = useState<NoteShare[]>([]);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -163,7 +163,10 @@ export function ShareModal({ visible, noteId, onClose }: ShareModalProps) {
           <View
             style={[
               styles.sheet,
-              { paddingBottom: Math.max(insets.bottom, 16) + 20 },
+              {
+                paddingBottom: sheetLayout.paddingBottom,
+                maxHeight: sheetLayout.maxHeight(0.85),
+              },
             ]}>
             <View style={styles.grabber} />
             <View style={styles.sheetHeader}>
@@ -319,8 +322,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 12,
-    maxHeight: '85%',
   },
   grabber: {
     alignSelf: 'center',
