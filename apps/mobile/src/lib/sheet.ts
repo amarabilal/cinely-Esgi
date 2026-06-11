@@ -1,13 +1,14 @@
-import { Platform, useWindowDimensions } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /**
  * Layout values for bottom sheets rendered inside an RN <Modal>.
  *
- * - `paddingBottom`: on iOS the modal draws under the home indicator, so pad
- *   by the safe-area inset. On Android the system navigation bar sits OUTSIDE
- *   the modal window, so an inset-sized pad would double-compensate and render
- *   as a dead gap — a fixed, comfortable padding is correct there.
+ * - `paddingBottom`: the modal can draw under the system bar (home indicator
+ *   on iOS, transparent nav bar on Android), so content must clear the
+ *   safe-area inset plus a small visual margin — otherwise rows render
+ *   underneath the system buttons (observed: tag color swatches bisected by
+ *   the 3-button nav bar).
  * - `maxHeight(fraction)`: a DEFINITE pixel cap (fraction of the window).
  *   Percentage maxHeight strings resolve against an indefinite-height parent
  *   inside the modal and clamp the inner ScrollView unpredictably (content
@@ -16,10 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export function useSheetLayout() {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
-  const paddingBottom =
-    Platform.OS === 'ios' ? Math.max(insets.bottom, 16) + 8 : 24;
   return {
-    paddingBottom,
+    paddingBottom: Math.max(insets.bottom, 12) + 12,
     maxHeight: (fraction: number) => Math.round(windowHeight * fraction),
   };
 }
