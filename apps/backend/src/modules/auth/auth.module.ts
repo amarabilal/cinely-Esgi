@@ -22,5 +22,6 @@ import { AuthController } from './infrastructure/controllers/auth.controller';
     { provide: USER_REPOSITORY, useClass: UserTypeOrmRepository },
   ],
   controllers: [AuthController],
+  exports: [AuthService],
 })
 export class AuthModule {}

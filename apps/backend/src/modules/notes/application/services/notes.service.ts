@@ -45,8 +45,22 @@ export class NotesService {
   }
 
   async searchSemantic(userId: string, q: string) {
-    const embedding = await this.aiService.generateEmbedding(q);
-    return this.noteRepository.searchSemantic(userId, JSON.stringify(embedding));
+    try {
+      const key = process.env.OPENAI_API_KEY;
+      if (!key || key === 'sk-proj-...' || key.includes('...')) {
+        throw new Error('OpenAI API key is missing or is a placeholder.');
+      }
+      const embedding = await this.aiService.generateEmbedding(q);
+      const results = await this.noteRepository.searchSemantic(userId, JSON.stringify(embedding));
+      if (results.length === 0) {
+        this.logger.log(`No semantic results found. Falling back to keyword search for "${q}".`);
+        return this.noteRepository.search(userId, q);
+      }
+      return results;
+    } catch (error: any) {
+      this.logger.warn(`Semantic search failed (${error.message}). Falling back to keyword search.`);
+      return this.noteRepository.search(userId, q);
+    }
   }
 
   async findOne(userId: string, id: string): Promise<NoteWithPermission> {

@@ -64,7 +64,10 @@ const router = createRouter({
         // Dashboard + Settings live inside the same shell so they inherit the
         // top bar + sidebar + command palette (absolute paths keep their URLs).
         { path: '/dashboard', name: 'dashboard', component: () => import('@/views/notes/DashboardView.vue') },
+        { path: '/calendar', name: 'calendar', component: () => import('@/views/notes/CalendarView.vue') },
         { path: '/settings', name: 'settings', component: () => import('@/views/settings/SettingsView.vue') },
+        { path: '/notebooks', name: 'notebooks', component: () => import('@/views/notebooks/NotebooksDashboardView.vue') },
+        { path: '/notebooks/:id', name: 'notebook-detail', component: () => import('@/views/notebooks/NotebookDetailView.vue') },
       ],
     },
   ],

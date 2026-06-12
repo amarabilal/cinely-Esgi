@@ -11,6 +11,8 @@ import { FoldersModule } from './modules/folders/folders.module';
 import { TagsModule } from './modules/tags/tags.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { AiModule } from './modules/ai/ai.module';
+import { GoogleModule } from './modules/google/google.module';
+import { NotebooksModule } from './modules/notebooks/notebooks.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -25,6 +27,8 @@ import { HealthController } from './health/health.controller';
     TagsModule,
     SettingsModule,
     AiModule,
+    GoogleModule,
+    NotebooksModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

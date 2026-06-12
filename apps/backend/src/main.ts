@@ -36,7 +36,7 @@ async function bootstrap() {
     }),
   );
 
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', { exclude: ['callback'] });
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Cinely API')
