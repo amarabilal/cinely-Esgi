@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { FileText, Hash, Printer, Share2, Type, Users, Calendar, Mail } from 'lucide-vue-next';
+import { FileText, Hash, Printer, Share2, Type, Users, Calendar, Mail, Download } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import { Button } from '@/components/ui/button';
 import { stripHtml } from '@/utils/notes';
@@ -130,6 +130,23 @@ async function copyMarkdown() {
     toast.error('Failed to copy', {
       description: error instanceof Error ? error.message : undefined,
     });
+  }
+}
+
+function downloadMarkdown() {
+  close();
+  try {
+    const markdown = htmlToMarkdown(props.contentHtml);
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${props.title || 'Untitled'}.md`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success('Downloaded as Markdown');
+  } catch (error: any) {
+    toast.error('Failed to download Markdown', { description: error.message });
   }
 }
 
@@ -324,6 +341,15 @@ onBeforeUnmount(() => {
       >
         <Hash class="size-4 shrink-0 text-muted-foreground" />
         Copy as Markdown
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        @click="downloadMarkdown"
+      >
+        <Download class="size-4 shrink-0 text-muted-foreground" />
+        Download Markdown (.md)
       </button>
       <button
         type="button"

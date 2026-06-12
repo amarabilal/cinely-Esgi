@@ -9,6 +9,8 @@ import { NoteShare } from '../../domain/entities/note-share.entity';
 import { User } from '../../../auth/domain/entities/user.entity';
 import { Tag } from '../../../tags/domain/entities/tag.entity';
 import { Folder } from '../../../folders/domain/entities/folder.entity';
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
+import { NotesGateway } from '../../infrastructure/gateways/notes.gateway';
 
 const makeNote = (overrides = {}) => ({
   id: 'note-1',
@@ -78,6 +80,18 @@ describe('NotesService', () => {
           useValue: {
             generateEmbedding: jest.fn().mockResolvedValue(new Array(1536).fill(0)),
             suggestTitle: jest.fn().mockResolvedValue(''),
+          },
+        },
+        {
+          provide: NotificationsService,
+          useValue: {
+            create: jest.fn().mockResolvedValue({}),
+          },
+        },
+        {
+          provide: NotesGateway,
+          useValue: {
+            sendNotification: jest.fn(),
           },
         },
       ],

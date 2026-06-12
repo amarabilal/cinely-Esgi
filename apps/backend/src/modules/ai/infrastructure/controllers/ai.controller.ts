@@ -17,4 +17,18 @@ export class AiController {
     const title = await this.aiService.suggestTitle(dto.content);
     return { title };
   }
+
+  @Post('suggest-tags')
+  @ApiOperation({ summary: 'Generate tag suggestions from note content (Claude Haiku)' })
+  async suggestTags(@Body() dto: { content: string; existingTags: string[] }) {
+    const tags = await this.aiService.suggestTags(dto.content, dto.existingTags || []);
+    return { tags };
+  }
+
+  @Post('summarize')
+  @ApiOperation({ summary: 'Generate a text summary from note content (Claude Haiku)' })
+  async summarize(@Body() dto: { content: string }) {
+    const summary = await this.aiService.summarize(dto.content);
+    return { summary };
+  }
 }
