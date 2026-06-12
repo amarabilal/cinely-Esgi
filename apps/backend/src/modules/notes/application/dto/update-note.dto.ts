@@ -20,4 +20,8 @@ export class UpdateNoteDto {
   @IsBoolean()
   @IsOptional()
   isArchived?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isPinned?: boolean;
 }

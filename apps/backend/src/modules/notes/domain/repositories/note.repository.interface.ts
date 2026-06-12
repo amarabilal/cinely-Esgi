@@ -18,6 +18,9 @@ export interface INoteRepository {
   update(userId: string, id: string, partial: Partial<Note>): Promise<void>;
   updateEmbedding(noteId: string, embeddingJson: string): Promise<void>;
   softDelete(userId: string, id: string): Promise<void>;
+  findDeleted(userId: string): Promise<Note[]>;
+  restore(userId: string, id: string): Promise<void>;
+  permanentDelete(userId: string, id: string): Promise<void>;
   addTag(noteId: string, tagId: string): Promise<void>;
   removeTag(noteId: string, tagId: string): Promise<void>;
 }

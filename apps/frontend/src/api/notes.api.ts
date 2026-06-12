@@ -7,10 +7,12 @@ export interface Note {
   content: string;
   isFavorite: boolean;
   isArchived: boolean;
+  isPinned: boolean;
   folderId: string | null;
   tags: Tag[];
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string | null;
   sharedPermission?: 'READ' | 'WRITE'; // present when note is shared with current user
 }
 
@@ -59,4 +61,9 @@ export const notesApi = {
   getVersions: (id: string) => client.get<NoteVersion[]>(`/notes/${id}/versions`),
   restoreVersion: (noteId: string, versionId: string) =>
     client.post<Note>(`/notes/${noteId}/versions/${versionId}/restore`),
+  togglePin: (id: string) => client.patch<Note>(`/notes/${id}/pin`),
+  findTrash: () => client.get<Note[]>('/notes/trash'),
+  restoreNote: (id: string) => client.patch(`/notes/${id}/restore`),
+  permanentDelete: (id: string) => client.delete(`/notes/${id}/permanent`),
+  emptyTrash: () => client.delete('/notes/trash'),
 };

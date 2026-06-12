@@ -20,7 +20,7 @@ import VersionHistoryModal from '@/components/notes/VersionHistoryModal.vue';
 import ToolbarDropdown from '@/components/notes/ToolbarDropdown.vue';
 import LinkModal from '@/components/notes/LinkModal.vue';
 import {
-  ArrowLeft, Star, History, Archive, Trash2, Sparkles, X,
+  ArrowLeft, Star, History, Archive, Trash2, Sparkles, X, Pin,
   Bold, Italic, Strikethrough, Heading, Heading1, Heading2, Heading3,
   List, ListOrdered, Code, Underline as UnderlineIcon, Pilcrow,
   ListChecks, Quote, Code2, Minus, Plus, Link2, Link2Off,
@@ -385,6 +385,24 @@ function clearFormatting() {
   run(() => editor.value!.chain().focus().unsetAllMarks().clearNodes().run());
 }
 
+// ── Word count / reading time ──────────────────────────────────
+const wordCount = computed(() => {
+  editorTick.value; // reactivity
+  const text = editor.value?.state.doc.textContent ?? '';
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  return words.length;
+});
+
+const charCount = computed(() => {
+  editorTick.value;
+  return (editor.value?.state.doc.textContent ?? '').length;
+});
+
+const readingTime = computed(() => {
+  const mins = Math.ceil(wordCount.value / 200);
+  return mins < 1 ? '< 1 min' : `${mins} min`;
+});
+
 </script>
 
 <template>
@@ -452,6 +470,15 @@ function clearFormatting() {
           />
 
           <template v-if="store.currentPermission === 'OWNER' && store.currentNote">
+            <!-- Pin -->
+            <Button
+              variant="ghost" size="icon"
+              :title="store.currentNote.isPinned ? 'Unpin note' : 'Pin note'"
+              :class="store.currentNote.isPinned ? 'text-primary' : ''"
+              @click="store.togglePin(store.currentNote.id)">
+              <Pin class="size-4" :class="store.currentNote.isPinned ? 'fill-primary' : ''" />
+            </Button>
+
             <!-- Favorite -->
             <Button
               variant="ghost" size="icon"
@@ -475,8 +502,10 @@ function clearFormatting() {
             </Button>
           </template>
 
-          <!-- Save status -->
+          <!-- Save status + word count -->
           <span class="ml-1 text-xs text-muted-foreground whitespace-nowrap">
+            {{ wordCount.toLocaleString() }} words · {{ readingTime }}
+            <span class="mx-1 text-border">|</span>
             {{ store.isSaving ? 'Saving…' : 'Saved' }}
           </span>
         </div>

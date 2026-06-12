@@ -68,6 +68,7 @@ const router = createRouter({
         { path: '/settings', name: 'settings', component: () => import('@/views/settings/SettingsView.vue') },
         { path: '/notebooks', name: 'notebooks', component: () => import('@/views/notebooks/NotebooksDashboardView.vue') },
         { path: '/notebooks/:id', name: 'notebook-detail', component: () => import('@/views/notebooks/NotebookDetailView.vue') },
+        { path: '/trash', name: 'trash', component: () => import('@/views/notes/TrashView.vue') },
       ],
     },
   ],

@@ -44,6 +44,19 @@ export class NotesController {
     return this.notesService.getStats(user.sub);
   }
 
+  @Get('trash')
+  @ApiOperation({ summary: 'List trashed notes' })
+  findTrash(@CurrentUser() user: { sub: string }) {
+    return this.notesService.findDeleted(user.sub);
+  }
+
+  @Delete('trash')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Empty trash (permanently delete all trashed notes)' })
+  async emptyTrash(@CurrentUser() user: { sub: string }) {
+    await this.notesService.emptyTrash(user.sub);
+  }
+
   @Get()
   findAll(@CurrentUser() user: { sub: string }, @Query() query: QueryNotesDto) {
     return this.notesService.findAll(user.sub, query);
@@ -87,6 +100,26 @@ export class NotesController {
     const updated = await this.notesService.update(user.sub, id, { isArchived: !note.isArchived });
     if (updated?.isArchived) this.notesGateway.emitNoteArchived(id);
     return updated;
+  }
+
+  @Patch(':id/pin')
+  @ApiOperation({ summary: 'Toggle pin status' })
+  async togglePin(@CurrentUser() user: { sub: string }, @Param('id') id: string) {
+    const note = await this.notesService.findOne(user.sub, id);
+    return this.notesService.update(user.sub, id, { isPinned: !note.isPinned });
+  }
+
+  @Patch(':id/restore')
+  @ApiOperation({ summary: 'Restore a trashed note' })
+  async restoreNote(@CurrentUser() user: { sub: string }, @Param('id') id: string) {
+    await this.notesService.restoreNote(user.sub, id);
+  }
+
+  @Delete(':id/permanent')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Permanently delete a trashed note' })
+  async permanentDelete(@CurrentUser() user: { sub: string }, @Param('id') id: string) {
+    await this.notesService.permanentDelete(user.sub, id);
   }
 
   @Post(':id/tags/:tagId')

@@ -34,7 +34,7 @@ export class NoteTypeOrmRepository implements INoteRepository {
       qb.innerJoin('note.tags', 'filterTag', 'filterTag.id = :tagId', { tagId: filters.tagId });
     }
 
-    return qb.orderBy('note.updated_at', 'DESC').getMany();
+    return qb.orderBy('note.is_pinned', 'DESC').addOrderBy('note.updated_at', 'DESC').getMany();
   }
 
   findById(userId: string, id: string): Promise<Note | null> {
@@ -54,6 +54,23 @@ export class NoteTypeOrmRepository implements INoteRepository {
 
   async softDelete(userId: string, id: string): Promise<void> {
     await this.repo.update({ id, userId }, { isDeleted: true, deletedAt: new Date() });
+  }
+
+  findDeleted(userId: string): Promise<Note[]> {
+    return this.repo.createQueryBuilder('note')
+      .leftJoinAndSelect('note.tags', 'tag')
+      .where('note.user_id = :userId', { userId })
+      .andWhere('note.is_deleted = true')
+      .orderBy('note.deleted_at', 'DESC')
+      .getMany();
+  }
+
+  async restore(userId: string, id: string): Promise<void> {
+    await this.repo.update({ id, userId, isDeleted: true }, { isDeleted: false, deletedAt: null });
+  }
+
+  async permanentDelete(userId: string, id: string): Promise<void> {
+    await this.repo.delete({ id, userId, isDeleted: true });
   }
 
   async addTag(noteId: string, tagId: string): Promise<void> {
