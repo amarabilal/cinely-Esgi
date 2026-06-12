@@ -67,6 +67,12 @@ export class NotesController {
     return this.notesService.create(user.sub, dto);
   }
 
+  @Post(':id/duplicate')
+  @ApiOperation({ summary: 'Duplicate a note (clones content, title, and tags)' })
+  duplicate(@CurrentUser() user: { sub: string }, @Param('id') id: string) {
+    return this.notesService.duplicate(user.sub, id);
+  }
+
   @Get(':id')
   findOne(@CurrentUser() user: { sub: string }, @Param('id') id: string) {
     return this.notesService.findOne(user.sub, id);

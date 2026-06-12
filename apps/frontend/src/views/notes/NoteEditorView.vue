@@ -19,8 +19,9 @@ import ShareNoteModal from '@/components/notes/ShareNoteModal.vue';
 import VersionHistoryModal from '@/components/notes/VersionHistoryModal.vue';
 import ToolbarDropdown from '@/components/notes/ToolbarDropdown.vue';
 import LinkModal from '@/components/notes/LinkModal.vue';
+import { toast } from 'vue-sonner';
 import {
-  ArrowLeft, Star, History, Archive, Trash2, Sparkles, X, Pin,
+  ArrowLeft, Star, History, Archive, Trash2, Sparkles, X, Pin, Copy, FileText,
   Bold, Italic, Strikethrough, Heading, Heading1, Heading2, Heading3,
   List, ListOrdered, Code, Underline as UnderlineIcon, Pilcrow,
   ListChecks, Quote, Code2, Minus, Plus, Link2, Link2Off,
@@ -244,6 +245,72 @@ async function suggestTitle() {
   }
 }
 
+// ── AI Tag Suggestion ─────────────────────────────────────────
+const suggestedTags = ref<string[]>([]);
+const isSuggestingTags = ref(false);
+
+async function suggestTags() {
+  if (!store.currentNote || isSuggestingTags.value) return;
+  const content = editor.value?.getHTML() ?? '';
+  if (!content || content === '<p></p>') {
+    toast.error('Write some content first to suggest tags.');
+    return;
+  }
+  isSuggestingTags.value = true;
+  try {
+    const existingNames = store.tags.map(t => t.name);
+    const { data } = await aiApi.suggestTags(content, existingNames);
+    suggestedTags.value = data.tags || [];
+    if (suggestedTags.value.length === 0) {
+      toast.info('No tags suggested for this content.');
+    }
+  } catch (error: any) {
+    toast.error('Failed to suggest tags', { description: error.message });
+  } finally {
+    isSuggestingTags.value = false;
+  }
+}
+
+async function addSuggestedTag(tagName: string) {
+  if (!store.currentNote) return;
+  const existing = store.tags.find(t => t.name.toLowerCase() === tagName.toLowerCase());
+  if (existing) {
+    if (currentTagIds.value.includes(existing.id)) return;
+    await store.addTagToNote(store.currentNote.id, existing.id);
+  } else {
+    const colors = ['#f87171', '#fb923c', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#f472b6'];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    const t = await store.createTag(tagName, randomColor);
+    await store.addTagToNote(store.currentNote.id, t.id);
+  }
+  suggestedTags.value = suggestedTags.value.filter(t => t !== tagName);
+  toast.success(`Tag #${tagName} added`);
+}
+
+// ── AI Summarization ──────────────────────────────────────────
+const isSummarizing = ref(false);
+const summaryText = ref('');
+const showSummaryPanel = ref(false);
+
+async function summarizeCurrentNote() {
+  if (!store.currentNote || isSummarizing.value) return;
+  const content = editor.value?.getHTML() ?? '';
+  if (!content || content === '<p></p>') {
+    toast.error('Write some content first to summarize.');
+    return;
+  }
+  isSummarizing.value = true;
+  try {
+    const { data } = await aiApi.summarize(content);
+    summaryText.value = data.summary || '';
+    showSummaryPanel.value = true;
+  } catch (error: any) {
+    toast.error('Failed to summarize note', { description: error.message });
+  } finally {
+    isSummarizing.value = false;
+  }
+}
+
 // ── Version & share panels ─────────────────────────────────────
 function toggleVersions() {
   showVersions.value = !showVersions.value;
@@ -271,6 +338,17 @@ async function deleteCurrent() {
   await store.deleteNote(store.currentNote.id);
   noteSync.leaveNote();
   router.push('/notes');
+}
+
+async function duplicateCurrent() {
+  if (!store.currentNote) return;
+  try {
+    const newNote = await store.duplicateNote(store.currentNote.id);
+    toast.success('Note duplicated successfully');
+    router.push(`/notes/${newNote.id}`);
+  } catch (error: any) {
+    toast.error('Failed to duplicate note', { description: error.message });
+  }
 }
 
 // ── Tags / folder organisation (owner only) ────────────────────
@@ -451,6 +529,16 @@ const readingTime = computed(() => {
             <Sparkles class="size-4" :class="isSuggestingTitle ? 'animate-pulse' : ''" />
           </Button>
 
+          <!-- AI Summarize -->
+          <Button
+            variant="ghost" size="icon"
+            :disabled="isSummarizing"
+            :title="isSummarizing ? 'Résumé en cours…' : 'Résumer la note (IA)'"
+            :class="showSummaryPanel ? 'bg-accent text-accent-foreground' : ''"
+            @click="summarizeCurrentNote">
+            <FileText class="size-4" :class="isSummarizing ? 'animate-pulse' : ''" />
+          </Button>
+
           <!-- Version history -->
           <Button
             variant="ghost" size="icon" title="Version history"
@@ -496,6 +584,14 @@ const readingTime = computed(() => {
               <Archive class="size-4" />
             </Button>
 
+            <!-- Duplicate -->
+            <Button
+              variant="ghost" size="icon"
+              title="Duplicate note"
+              @click="duplicateCurrent">
+              <Copy class="size-4" />
+            </Button>
+
             <!-- Delete -->
             <Button variant="ghost" size="icon" title="Delete note" class="text-destructive" @click="deleteCurrent">
               <Trash2 class="size-4" />
@@ -533,12 +629,39 @@ const readingTime = computed(() => {
             </button>
           </Badge>
 
-          <div class="w-44">
-            <TagSuggestionInput
-              :existing-tag-ids="currentTagIds"
-              @select="handleTagSelect"
-              @create="handleTagCreate" />
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <div class="w-44 shrink-0">
+              <TagSuggestionInput
+                :existing-tag-ids="currentTagIds"
+                @select="handleTagSelect"
+                @create="handleTagCreate" />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              :disabled="isSuggestingTags"
+              title="Suggérer des tags par l'IA"
+              @click="suggestTags"
+              class="gap-1 px-2.5 h-[38px] text-xs">
+              <Sparkles class="size-3.5" :class="isSuggestingTags ? 'animate-spin' : ''" />
+              Suggérer des tags
+            </Button>
           </div>
+        </div>
+
+        <!-- AI Suggested Tag Chips -->
+        <div v-if="suggestedTags.length > 0" class="flex w-full items-center gap-1.5 flex-wrap text-xs text-muted-foreground mt-1 bg-accent/20 p-2 rounded-md border border-border/50">
+          <span class="font-medium shrink-0 flex items-center gap-1"><Sparkles class="size-3 text-primary animate-pulse" /> Suggestions d'IA :</span>
+          <button
+            v-for="tag in suggestedTags"
+            :key="tag"
+            @click="addSuggestedTag(tag)"
+            class="flex items-center gap-1 border border-primary/20 hover:border-primary/50 bg-primary/5 hover:bg-primary/10 text-primary px-2.5 py-1 rounded-full transition-colors font-medium">
+            + {{ tag }}
+          </button>
+          <button @click="suggestedTags = []" class="text-muted-foreground hover:text-foreground ml-auto pl-2">
+            <X class="size-3" />
+          </button>
         </div>
 
         <div class="ml-auto w-48 shrink-0">
@@ -914,6 +1037,25 @@ const readingTime = computed(() => {
         </div>
       </main>
 
+      <!-- AI Summary side panel -->
+      <aside
+        v-if="showSummaryPanel"
+        class="w-80 shrink-0 border-l border-border bg-card flex flex-col h-full overflow-hidden transition-all duration-200">
+        <div class="p-4 border-b border-border flex items-center justify-between shrink-0 bg-muted/30">
+          <div class="flex items-center gap-2 font-semibold text-sm">
+            <Sparkles class="size-4 text-primary animate-pulse" />
+            Résumé par l'IA
+          </div>
+          <Button variant="ghost" size="icon" class="size-7" @click="showSummaryPanel = false">
+            <X class="size-4" />
+          </Button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+          <div class="prose prose-sm dark:prose-invert text-sm text-foreground/95 leading-relaxed space-y-2 whitespace-pre-line">
+            {{ summaryText }}
+          </div>
+        </div>
+      </aside>
     </div>
 
     <!-- Add / edit link modal (replaces window.prompt) -->

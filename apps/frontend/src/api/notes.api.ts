@@ -48,6 +48,7 @@ export const notesApi = {
   findOne: (id: string) => client.get<Note>(`/notes/${id}`),
   create: (payload: { title?: string; content?: string; folderId?: string }) =>
     client.post<Note>('/notes', payload),
+  duplicateNote: (id: string) => client.post<Note>(`/notes/${id}/duplicate`),
   update: (id: string, payload: Partial<Pick<Note, 'title' | 'content' | 'folderId' | 'isFavorite' | 'isArchived'>>) =>
     client.put<Note>(`/notes/${id}`, payload),
   remove: (id: string) => client.delete(`/notes/${id}`),

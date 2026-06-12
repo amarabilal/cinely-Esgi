@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException, Logger, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { INoteRepository, NOTE_REPOSITORY } from '../../domain/repositories/note.repository.interface';
@@ -12,6 +12,8 @@ import { AiService } from '../../../ai/application/services/ai.service';
 import { CreateNoteDto } from '../dto/create-note.dto';
 import { UpdateNoteDto } from '../dto/update-note.dto';
 import { QueryNotesDto } from '../dto/query-notes.dto';
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
+import { NotesGateway } from '../../infrastructure/gateways/notes.gateway';
 
 const VERSION_THROTTLE_SECONDS = 60;
 
@@ -29,6 +31,8 @@ export class NotesService {
     @InjectRepository(Tag) private readonly tagRepository: Repository<Tag>,
     @InjectRepository(Folder) private readonly folderRepository: Repository<Folder>,
     private readonly aiService: AiService,
+    private readonly notificationsService: NotificationsService,
+    @Inject(forwardRef(() => NotesGateway)) private readonly notesGateway: NotesGateway,
   ) {}
 
   findAll(userId: string, query: QueryNotesDto) {
@@ -119,6 +123,26 @@ export class NotesService {
     return note;
   }
 
+  async duplicate(userId: string, id: string): Promise<Note> {
+    const original = await this.findOne(userId, id);
+    const duplicated = await this.noteRepository.save({
+      userId,
+      title: original.title ? `${original.title} (Copy)` : 'Copy',
+      content: original.content,
+      folderId: original.folderId,
+      tags: [],
+    });
+
+    if (original.tags && original.tags.length > 0) {
+      for (const tag of original.tags) {
+        await this.noteRepository.addTag(duplicated.id, tag.id);
+      }
+    }
+
+    this.scheduleEmbedding(duplicated.id, duplicated.title, duplicated.content);
+    return this.findOne(userId, duplicated.id);
+  }
+
   async update(userId: string, id: string, dto: UpdateNoteDto) {
     let existing = await this.noteRepository.findById(userId, id);
     let ownerId = userId;
@@ -155,6 +179,26 @@ export class NotesService {
     const updated = await this.noteRepository.findById(ownerId, id);
     if (contentChanged && updated) {
       this.scheduleEmbedding(id, updated.title, updated.content);
+      try {
+        const editorUser = await this.userRepository.findOne({ where: { id: userId } });
+        const editorName = editorUser ? `${editorUser.firstName} ${editorUser.lastName}` : 'Un utilisateur';
+        const message = `${editorName} a mis à jour la note "${updated.title || 'Sans titre'}".`;
+        
+        if (updated.userId !== userId) {
+          const notification = await this.notificationsService.create(updated.userId, 'EDIT', message, { noteId: id });
+          this.notesGateway.sendNotification(updated.userId, notification);
+        }
+        
+        const shares = await this.shareRepository.find({ where: { noteId: id } });
+        for (const share of shares) {
+          if (share.sharedWithId !== userId) {
+            const notification = await this.notificationsService.create(share.sharedWithId, 'EDIT', message, { noteId: id });
+            this.notesGateway.sendNotification(share.sharedWithId, notification);
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to send edit notification: ${err.message}`);
+      }
     }
     return updated;
   }
@@ -259,6 +303,15 @@ export class NotesService {
       { noteId, sharedWithId: targetUser.id, permission },
       { conflictPaths: ['noteId', 'sharedWithId'] },
     );
+    try {
+      const owner = await this.userRepository.findOne({ where: { id: ownerId } });
+      const ownerName = owner ? `${owner.firstName} ${owner.lastName}` : 'Un utilisateur';
+      const message = `${ownerName} a partagé la note "${note.title || 'Sans titre'}" avec vous.`;
+      const notification = await this.notificationsService.create(targetUser.id, 'SHARE', message, { noteId });
+      this.notesGateway.sendNotification(targetUser.id, notification);
+    } catch (err: any) {
+      this.logger.warn(`Failed to send share notification: ${err.message}`);
+    }
   }
 
   async updateSharePermission(

@@ -3,6 +3,7 @@ import {
   OnGatewayConnection, OnGatewayDisconnect,
   MessageBody, ConnectedSocket,
 } from '@nestjs/websockets';
+import { Inject, forwardRef } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -39,7 +40,7 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(
     private readonly jwtService: JwtService,
-    private readonly notesService: NotesService,
+    @Inject(forwardRef(() => NotesService)) private readonly notesService: NotesService,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {}
 
@@ -69,6 +70,7 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       permissions: {},
     };
     client.data = presence;
+    client.join(`user:${payload.sub}`);
 
     // Enrich the display name asynchronously; join_note awaits this so the
     // broadcast presence carries the real name.
@@ -212,5 +214,9 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
     }
     this.server.to(`note:${noteId}`).emit('share_revoked', { noteId, userId: targetUserId });
+  }
+
+  sendNotification(userId: string, notification: any) {
+    this.server.to(`user:${userId}`).emit('notification:new', notification);
   }
 }

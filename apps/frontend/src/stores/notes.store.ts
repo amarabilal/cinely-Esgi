@@ -63,6 +63,14 @@ export const useNotesStore = defineStore('notes', () => {
     return data;
   }
 
+  async function duplicateNote(id: string) {
+    const { data } = await notesApi.duplicateNote(id);
+    notes.value.unshift(data);
+    notePermissions.value[data.id] = 'OWNER';
+    currentNote.value = data;
+    return data;
+  }
+
   async function updateNote(id: string, payload: Partial<Pick<Note, 'title' | 'content' | 'folderId' | 'isFavorite' | 'isArchived'>>) {
     isSaving.value = true;
     try {
@@ -255,7 +263,7 @@ export const useNotesStore = defineStore('notes', () => {
     notes, folders, tags, currentNote, isSaving, searchResults, versions,
     sharedNotes, trashedNotes, shares, notePermissions, currentPermission, canEdit,
     fetchNotes, fetchFolders, fetchTags, loadAll,
-    createNote, updateNote, deleteNote, applyRemoteUpdate, applyRemoteTagsUpdate, applyNoteDeleted, applyNoteArchived,
+    createNote, duplicateNote, updateNote, deleteNote, applyRemoteUpdate, applyRemoteTagsUpdate, applyNoteDeleted, applyNoteArchived,
     toggleFavorite, toggleArchive, togglePin,
     addTagToNote, removeTagFromNote,
     createFolder, renameFolder, deleteFolder,

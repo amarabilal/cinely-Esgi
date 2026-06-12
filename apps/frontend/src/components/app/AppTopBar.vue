@@ -5,6 +5,7 @@ import { LayoutDashboard, LogOut, Menu, Plus, Search, Settings, Sparkles, UserRo
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import ThemeToggle from '@/components/ThemeToggle.vue';
+import NotificationsDropdown from '@/components/app/NotificationsDropdown.vue';
 
 const emit = defineEmits<{
   openCommand: [];
@@ -57,6 +58,8 @@ const menuOpen = ref(false);
       </Button>
 
       <ThemeToggle />
+
+      <NotificationsDropdown />
 
       <Button size="sm" class="hidden sm:inline-flex" @click="emit('newNote')">
         <Plus class="size-4" />

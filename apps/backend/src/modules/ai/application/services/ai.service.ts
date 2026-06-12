@@ -190,4 +190,43 @@ ${guideInstruction}`;
       content: text,
     };
   }
+
+  async suggestTags(content: string, existingTags: string[]): Promise<string[]> {
+    const plain = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 8000);
+    const message = await this.anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 128,
+      system:
+        'You are an AI assistant that suggests relevant tags for notes. ' +
+        'You will receive the note content and a list of existing tags. ' +
+        'Return a JSON array of 1 to 5 tags. ' +
+        'Prefer using existing tags if they match the topic, or suggest new ones if needed. ' +
+        'Return ONLY the JSON array (e.g. ["tag1", "tag2"]). Do not include markdown code blocks or any other text.',
+      messages: [{ role: 'user', content: `Existing tags: ${JSON.stringify(existingTags)}\n\nNote content:\n${plain}` }],
+    });
+    const block = message.content[0];
+    const text = block.type === 'text' ? block.text.trim() : '[]';
+    try {
+      const cleaned = text.replace(/^```json\s*/, '').replace(/```$/, '').trim();
+      const tags = JSON.parse(cleaned);
+      return Array.isArray(tags) ? tags.map(t => String(t).trim()).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async summarize(content: string): Promise<string> {
+    const plain = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 8000);
+    const message = await this.anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      system:
+        'Tu es un assistant qui génère des résumés clairs et concis sous forme de puces (maximum 5 puces). ' +
+        'Réponds directement avec le résumé en français ou en anglais (selon la langue du texte), sans introduction ni conclusion. ' +
+        'Utilise un formatage markdown avec des tirets pour les puces.',
+      messages: [{ role: 'user', content: `Résume cette note :\n\n${plain}` }],
+    });
+    const block = message.content[0];
+    return block.type === 'text' ? block.text.trim() : '';
+  }
 }

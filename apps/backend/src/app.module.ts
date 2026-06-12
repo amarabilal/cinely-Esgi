@@ -13,6 +13,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { AiModule } from './modules/ai/ai.module';
 import { GoogleModule } from './modules/google/google.module';
 import { NotebooksModule } from './modules/notebooks/notebooks.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -29,6 +30,7 @@ import { HealthController } from './health/health.controller';
     AiModule,
     GoogleModule,
     NotebooksModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
