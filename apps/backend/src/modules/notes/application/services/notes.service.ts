@@ -165,6 +165,31 @@ export class NotesService {
     await this.noteRepository.softDelete(userId, id);
   }
 
+  findDeleted(userId: string) {
+    return this.noteRepository.findDeleted(userId);
+  }
+
+  async restoreNote(userId: string, id: string) {
+    const deleted = await this.noteRepository.findDeleted(userId);
+    const note = deleted.find(n => n.id === id);
+    if (!note) throw new NotFoundException('Note not found in trash');
+    await this.noteRepository.restore(userId, id);
+  }
+
+  async permanentDelete(userId: string, id: string) {
+    const deleted = await this.noteRepository.findDeleted(userId);
+    const note = deleted.find(n => n.id === id);
+    if (!note) throw new NotFoundException('Note not found in trash');
+    await this.noteRepository.permanentDelete(userId, id);
+  }
+
+  async emptyTrash(userId: string) {
+    const deleted = await this.noteRepository.findDeleted(userId);
+    for (const note of deleted) {
+      await this.noteRepository.permanentDelete(userId, note.id);
+    }
+  }
+
   async addTag(userId: string, noteId: string, tagId: string) {
     const note = await this.noteRepository.findById(userId, noteId);
     if (!note) throw new NotFoundException('Note not found');

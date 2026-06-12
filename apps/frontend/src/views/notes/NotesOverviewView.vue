@@ -5,6 +5,7 @@ import { Calendar, Clock, FileText, Plus } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState.vue';
 import NoteCard from '@/components/notes/NoteCard.vue';
+import NoteTemplateModal from '@/components/notes/NoteTemplateModal.vue';
 import { useNotesStore } from '@/stores/notes.store';
 import type { Note, NoteQuery } from '@/api/notes.api';
 
@@ -15,6 +16,7 @@ const route = useRoute();
 const store = useNotesStore();
 
 const statFilter = ref<OverviewFilter>('all');
+const templateModalOpen = ref(false);
 
 // Whether the current route targets shared-with-me notes.
 const isShared = computed(() => route.query.filter === 'shared');
@@ -121,7 +123,7 @@ async function newNote() {
           {{ displayedNotes.length }} note{{ displayedNotes.length === 1 ? '' : 's' }}
         </p>
       </div>
-      <Button @click="newNote">
+      <Button @click="templateModalOpen = true">
         <Plus class="size-4" />
         New note
       </Button>
@@ -133,7 +135,7 @@ async function newNote() {
         title="No notes yet"
         description="Create your first note to get started."
       >
-        <Button @click="newNote">
+        <Button @click="templateModalOpen = true">
           <Plus class="size-4" />
           New note
         </Button>
@@ -176,5 +178,7 @@ async function newNote() {
         />
       </div>
     </template>
+
+    <NoteTemplateModal v-model:open="templateModalOpen" />
   </div>
 </template>

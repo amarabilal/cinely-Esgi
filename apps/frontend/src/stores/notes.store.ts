@@ -14,6 +14,7 @@ export const useNotesStore = defineStore('notes', () => {
   const searchResults = ref<Note[] | null>(null);
   const versions = ref<NoteVersion[]>([]);
   const sharedNotes = ref<Note[]>([]);
+  const trashedNotes = ref<Note[]>([]);
   const shares = ref<Share[]>([]);
 
   // Track permission per note: 'OWNER' | 'READ' | 'WRITE'
@@ -122,6 +123,33 @@ export const useNotesStore = defineStore('notes', () => {
     if (currentNote.value?.id === id) currentNote.value = null;
   }
 
+  async function togglePin(id: string) {
+    const { data } = await notesApi.togglePin(id);
+    const idx = notes.value.findIndex((n) => n.id === id);
+    if (idx !== -1) notes.value[idx] = data;
+    if (currentNote.value?.id === id) currentNote.value = data;
+  }
+
+  async function fetchTrash() {
+    const { data } = await notesApi.findTrash();
+    trashedNotes.value = data;
+  }
+
+  async function restoreNote(id: string) {
+    await notesApi.restoreNote(id);
+    trashedNotes.value = trashedNotes.value.filter(n => n.id !== id);
+  }
+
+  async function permanentDelete(id: string) {
+    await notesApi.permanentDelete(id);
+    trashedNotes.value = trashedNotes.value.filter(n => n.id !== id);
+  }
+
+  async function emptyTrash() {
+    await notesApi.emptyTrash();
+    trashedNotes.value = [];
+  }
+
   async function addTagToNote(noteId: string, tagId: string) {
     const { data } = await notesApi.addTag(noteId, tagId);
     const idx = notes.value.findIndex((n) => n.id === noteId);
@@ -225,10 +253,10 @@ export const useNotesStore = defineStore('notes', () => {
 
   return {
     notes, folders, tags, currentNote, isSaving, searchResults, versions,
-    sharedNotes, shares, notePermissions, currentPermission, canEdit,
+    sharedNotes, trashedNotes, shares, notePermissions, currentPermission, canEdit,
     fetchNotes, fetchFolders, fetchTags, loadAll,
     createNote, updateNote, deleteNote, applyRemoteUpdate, applyRemoteTagsUpdate, applyNoteDeleted, applyNoteArchived,
-    toggleFavorite, toggleArchive,
+    toggleFavorite, toggleArchive, togglePin,
     addTagToNote, removeTagFromNote,
     createFolder, renameFolder, deleteFolder,
     createTag, updateTag, deleteTag,
@@ -236,5 +264,6 @@ export const useNotesStore = defineStore('notes', () => {
     search, clearSearch,
     fetchVersions, restoreVersion,
     fetchSharedNotes, fetchShares, shareNote, updateShare, revokeShare,
+    fetchTrash, restoreNote, permanentDelete, emptyTrash,
   };
 });
