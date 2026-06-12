@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { FileText, Hash, Printer, Share2, Type, Users } from 'lucide-vue-next';
+import { FileText, Hash, Printer, Share2, Type, Users, Calendar, Mail } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import { Button } from '@/components/ui/button';
 import { stripHtml } from '@/utils/notes';
+import GoogleCalendarModal from './GoogleCalendarModal.vue';
+import EmailNoteModal from './EmailNoteModal.vue';
 
 const props = defineProps<{
+  noteId: string;
   title: string;
   contentHtml: string;
   owner?: boolean;
@@ -21,8 +24,33 @@ const canSystemShare = computed(
   () => typeof navigator !== 'undefined' && typeof navigator.share === 'function',
 );
 
-function toggle() {
+const isGoogleConnected = ref(false);
+const showCalendarModal = ref(false);
+const showEmailModal = ref(false);
+const exportingDrive = ref(false);
+const syncingCalendar = ref(false);
+
+async function checkGoogleStatus() {
+  const token = localStorage.getItem('accessToken');
+  if (!token) return;
+  try {
+    const res = await fetch('/api/google/status', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      isGoogleConnected.value = data.connected;
+    }
+  } catch (err) {
+    console.error('Failed to check Google status', err);
+  }
+}
+
+async function handleToggle() {
   isOpen.value = !isOpen.value;
+  if (isOpen.value) {
+    await checkGoogleStatus();
+  }
 }
 
 function close() {
@@ -140,6 +168,74 @@ function printNote() {
   setTimeout(() => printWindow.print(), 250);
 }
 
+async function exportToGoogleDrive() {
+  close();
+  exportingDrive.value = true;
+  const toastId = toast.loading('Exporting to Google Drive...');
+  try {
+    const token = localStorage.getItem('accessToken');
+    const res = await fetch(`/api/google/export-drive/${props.noteId}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (res.ok && data.webViewLink) {
+      toast.success('Note exported successfully to Google Drive!', {
+        id: toastId,
+        action: {
+          label: 'Open Doc',
+          onClick: () => window.open(data.webViewLink, '_blank')
+        }
+      });
+    } else {
+      toast.error(data.message || 'Failed to export to Google Drive', { id: toastId });
+    }
+  } catch (error: any) {
+    toast.error('Failed to export to Google Drive', {
+      id: toastId,
+      description: error.message
+    });
+  } finally {
+    exportingDrive.value = false;
+  }
+}
+
+async function syncToGoogleCalendar(start: string, end: string) {
+  showCalendarModal.value = false;
+  syncingCalendar.value = true;
+  const toastId = toast.loading('Syncing with Google Calendar...');
+  try {
+    const token = localStorage.getItem('accessToken');
+    const res = await fetch(`/api/google/sync-calendar/${props.noteId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ start, end })
+    });
+    const data = await res.json();
+    if (res.ok && data.htmlLink) {
+      toast.success('Event synced to Google Calendar!', {
+        id: toastId,
+        action: {
+          label: 'Open Event',
+          onClick: () => window.open(data.htmlLink, '_blank')
+        }
+      });
+    } else {
+      toast.error(data.message || 'Failed to sync to Google Calendar', { id: toastId });
+    }
+  } catch (error: any) {
+    toast.error('Failed to sync to Google Calendar', {
+      id: toastId,
+      description: error.message
+    });
+  } finally {
+    syncingCalendar.value = false;
+  }
+}
+
 async function systemShare() {
   close();
   if (!canSystemShare.value) return;
@@ -188,7 +284,7 @@ onBeforeUnmount(() => {
       aria-label="Share or export"
       :aria-expanded="isOpen"
       aria-haspopup="menu"
-      @click="toggle"
+      @click="handleToggle"
     >
       <Share2 class="size-4" />
     </Button>
@@ -248,8 +344,46 @@ onBeforeUnmount(() => {
         <FileText class="size-4 shrink-0 text-muted-foreground" />
         System share
       </button>
+
+      <!-- Google Services options -->
+      <template v-if="isGoogleConnected">
+        <div class="my-1 h-px bg-border" />
+        <div class="px-2 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Google services</div>
+        <button
+          type="button"
+          role="menuitem"
+          :disabled="exportingDrive"
+          class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+          @click="exportToGoogleDrive"
+        >
+          <FileText class="size-4 shrink-0 text-muted-foreground" />
+          Export to Google Drive
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          :disabled="syncingCalendar"
+          class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+          @click="close(); showCalendarModal = true"
+        >
+          <Calendar class="size-4 shrink-0 text-muted-foreground" />
+          Add to Google Calendar
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          @click="close(); showEmailModal = true"
+        >
+          <Mail class="size-4 shrink-0 text-muted-foreground" />
+          Email this note (Gmail)
+        </button>
+      </template>
     </div>
     </Transition>
+    
+    <GoogleCalendarModal v-model:open="showCalendarModal" @submit="syncToGoogleCalendar" />
+    <EmailNoteModal v-model:open="showEmailModal" :note-title="title" :note-content-html="contentHtml" />
   </div>
 </template>
 

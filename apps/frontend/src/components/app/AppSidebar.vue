@@ -18,6 +18,7 @@ import {
   Tags,
   Trash2,
   Users,
+  Calendar,
 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import { Button } from '@/components/ui/button';
@@ -110,6 +111,11 @@ function goArchived() {
 function goDashboard() {
   emit('close');
   void router.push('/dashboard');
+}
+
+function goCalendar() {
+  emit('close');
+  void router.push('/calendar');
 }
 
 function goSearch() {
@@ -297,6 +303,17 @@ function handleTagDragStart(event: DragEvent, tag: { id: string; name: string })
             <span class="flex min-w-0 items-center gap-2">
               <LayoutDashboard class="size-4" />
               <span v-if="!isCollapsed" class="truncate">Dashboard</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            :class="navItemClass(route.path === '/calendar')"
+            title="Calendar"
+            @click="goCalendar"
+          >
+            <span class="flex min-w-0 items-center gap-2">
+              <Calendar class="size-4" />
+              <span v-if="!isCollapsed" class="truncate">Calendar</span>
             </span>
           </button>
           <button

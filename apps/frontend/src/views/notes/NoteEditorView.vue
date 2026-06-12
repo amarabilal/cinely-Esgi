@@ -444,6 +444,7 @@ function clearFormatting() {
           <!-- Share / export (share with people, copy, markdown, print, system share) -->
           <ShareExportMenu
             v-if="store.currentNote"
+            :note-id="store.currentNote.id"
             :title="titleInput"
             :content-html="editor?.getHTML() ?? store.currentNote.content"
             :owner="store.currentPermission === 'OWNER'"

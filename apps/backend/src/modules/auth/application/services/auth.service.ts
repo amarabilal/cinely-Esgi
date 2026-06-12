@@ -8,6 +8,7 @@ import { Repository, IsNull } from 'typeorm';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { IUserRepository, USER_REPOSITORY } from '../../domain/repositories/user.repository.interface';
+import { User } from '../../domain/entities/user.entity';
 import { Session } from '../../domain/entities/session.entity';
 import { PasswordResetToken } from '../../domain/entities/password-reset-token.entity';
 import { TotpRecoveryCode } from '../../domain/entities/totp-recovery-code.entity';
@@ -211,6 +212,54 @@ export class AuthService {
 
     await this.userRepository.update(resetToken.userId, { passwordHash, passwordExpiresAt });
     await this.resetTokenRepository.update(resetToken.id, { usedAt: new Date() });
+  }
+
+  async loginOAuth(
+    email: string,
+    firstName: string,
+    lastName: string,
+    googleTokens: {
+      accessToken: string;
+      refreshToken?: string;
+      expiryDate?: number;
+    },
+  ) {
+    let user = await this.userRepository.findByEmail(email);
+
+    if (!user) {
+      const placeholderPassword = crypto.randomUUID();
+      const passwordHash = await argon2.hash(placeholderPassword);
+      const passwordExpiresAt = new Date();
+      passwordExpiresAt.setDate(passwordExpiresAt.getDate() + PASSWORD_EXPIRY_DAYS);
+
+      user = await this.userRepository.save({
+        email,
+        passwordHash,
+        firstName: firstName || 'Google',
+        lastName: lastName || 'User',
+        passwordExpiresAt,
+        isEmailVerified: true,
+      });
+    }
+
+    const updateData: Partial<User> = {
+      googleAccessToken: googleTokens.accessToken,
+      googleEmail: email,
+      isEmailVerified: true,
+      loginAttempts: 0,
+      lockedUntil: null,
+    };
+
+    if (googleTokens.refreshToken) {
+      updateData.googleRefreshToken = googleTokens.refreshToken;
+    }
+    if (googleTokens.expiryDate) {
+      updateData.googleTokenExpiresAt = new Date(googleTokens.expiryDate);
+    }
+
+    await this.userRepository.update(user.id, updateData);
+
+    return this.createTokenPair(user.id, user.email);
   }
 
   private async createTokenPair(userId: string, email: string) {
