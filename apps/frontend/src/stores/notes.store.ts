@@ -138,6 +138,13 @@ export const useNotesStore = defineStore('notes', () => {
     if (currentNote.value?.id === id) currentNote.value = data;
   }
 
+  async function togglePublic(id: string) {
+    const { data } = await notesApi.togglePublic(id);
+    const idx = notes.value.findIndex((n) => n.id === id);
+    if (idx !== -1) notes.value[idx] = data;
+    if (currentNote.value?.id === id) currentNote.value = data;
+  }
+
   async function fetchTrash() {
     const { data } = await notesApi.findTrash();
     trashedNotes.value = data;
@@ -264,7 +271,7 @@ export const useNotesStore = defineStore('notes', () => {
     sharedNotes, trashedNotes, shares, notePermissions, currentPermission, canEdit,
     fetchNotes, fetchFolders, fetchTags, loadAll,
     createNote, duplicateNote, updateNote, deleteNote, applyRemoteUpdate, applyRemoteTagsUpdate, applyNoteDeleted, applyNoteArchived,
-    toggleFavorite, toggleArchive, togglePin,
+    toggleFavorite, toggleArchive, togglePin, togglePublic,
     addTagToNote, removeTagFromNote,
     createFolder, renameFolder, deleteFolder,
     createTag, updateTag, deleteTag,

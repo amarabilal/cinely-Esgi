@@ -34,6 +34,12 @@ export class Note {
   @Column({ name: 'is_pinned', default: false })
   isPinned: boolean;
 
+  @Column({ name: 'is_public', default: false })
+  isPublic: boolean;
+
+  @Column({ name: 'public_token', nullable: true })
+  publicToken: string | null;
+
   @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date | null;
 

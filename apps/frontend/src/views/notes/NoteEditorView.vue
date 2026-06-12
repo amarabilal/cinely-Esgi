@@ -19,9 +19,11 @@ import ShareNoteModal from '@/components/notes/ShareNoteModal.vue';
 import VersionHistoryModal from '@/components/notes/VersionHistoryModal.vue';
 import ToolbarDropdown from '@/components/notes/ToolbarDropdown.vue';
 import LinkModal from '@/components/notes/LinkModal.vue';
+import CommentSection from '@/components/notes/CommentSection.vue';
 import { toast } from 'vue-sonner';
 import {
   ArrowLeft, Star, History, Archive, Trash2, Sparkles, X, Pin, Copy, FileText,
+  MessageSquare,
   Bold, Italic, Strikethrough, Heading, Heading1, Heading2, Heading3,
   List, ListOrdered, Code, Underline as UnderlineIcon, Pilcrow,
   ListChecks, Quote, Code2, Minus, Plus, Link2, Link2Off,
@@ -291,6 +293,7 @@ async function addSuggestedTag(tagName: string) {
 const isSummarizing = ref(false);
 const summaryText = ref('');
 const showSummaryPanel = ref(false);
+const showCommentsPanel = ref(false);
 
 async function summarizeCurrentNote() {
   if (!store.currentNote || isSummarizing.value) return;
@@ -545,6 +548,15 @@ const readingTime = computed(() => {
             :class="showVersions ? 'bg-accent text-accent-foreground' : ''"
             @click="toggleVersions">
             <History class="size-4" />
+          </Button>
+
+          <!-- Comments -->
+          <Button
+            v-if="store.currentNote"
+            variant="ghost" size="icon" title="Commentaires"
+            :class="showCommentsPanel ? 'bg-accent text-accent-foreground' : ''"
+            @click="showCommentsPanel = !showCommentsPanel; showSummaryPanel = false">
+            <MessageSquare class="size-4" />
           </Button>
 
           <!-- Share / export (share with people, copy, markdown, print, system share) -->
@@ -1056,6 +1068,18 @@ const readingTime = computed(() => {
           </div>
         </div>
       </aside>
+
+      <!-- Comments side panel -->
+      <CommentSection
+        v-if="showCommentsPanel && store.currentNote"
+        :note-id="store.currentNote.id"
+      >
+        <template #close-button>
+          <Button variant="ghost" size="icon" class="size-7" @click="showCommentsPanel = false">
+            <X class="size-4" />
+          </Button>
+        </template>
+      </CommentSection>
     </div>
 
     <!-- Add / edit link modal (replaces window.prompt) -->

@@ -115,6 +115,12 @@ export class NotesController {
     return this.notesService.update(user.sub, id, { isPinned: !note.isPinned });
   }
 
+  @Patch(':id/public')
+  @ApiOperation({ summary: 'Toggle public sharing status' })
+  async togglePublic(@CurrentUser() user: { sub: string }, @Param('id') id: string) {
+    return this.notesService.togglePublic(user.sub, id);
+  }
+
   @Patch(':id/restore')
   @ApiOperation({ summary: 'Restore a trashed note' })
   async restoreNote(@CurrentUser() user: { sub: string }, @Param('id') id: string) {

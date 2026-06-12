@@ -14,6 +14,7 @@ import { UpdateNoteDto } from '../dto/update-note.dto';
 import { QueryNotesDto } from '../dto/query-notes.dto';
 import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import { NotesGateway } from '../../infrastructure/gateways/notes.gateway';
+import { ActivityService } from '../../../activity/application/services/activity.service';
 
 const VERSION_THROTTLE_SECONDS = 60;
 
@@ -33,6 +34,7 @@ export class NotesService {
     private readonly aiService: AiService,
     private readonly notificationsService: NotificationsService,
     @Inject(forwardRef(() => NotesGateway)) private readonly notesGateway: NotesGateway,
+    private readonly activityService: ActivityService,
   ) {}
 
   findAll(userId: string, query: QueryNotesDto) {
@@ -120,6 +122,7 @@ export class NotesService {
       tags: [],
     });
     this.scheduleEmbedding(note.id, note.title, note.content);
+    void this.activityService.log(userId, 'CREATE', 'NOTE', note.id, { title: note.title });
     return note;
   }
 
@@ -140,6 +143,7 @@ export class NotesService {
     }
 
     this.scheduleEmbedding(duplicated.id, duplicated.title, duplicated.content);
+    void this.activityService.log(userId, 'DUPLICATE', 'NOTE', duplicated.id, { title: duplicated.title });
     return this.findOne(userId, duplicated.id);
   }
 
@@ -179,6 +183,7 @@ export class NotesService {
     const updated = await this.noteRepository.findById(ownerId, id);
     if (contentChanged && updated) {
       this.scheduleEmbedding(id, updated.title, updated.content);
+      void this.activityService.log(userId, 'EDIT', 'NOTE', id, { title: updated.title });
       try {
         const editorUser = await this.userRepository.findOne({ where: { id: userId } });
         const editorName = editorUser ? `${editorUser.firstName} ${editorUser.lastName}` : 'Un utilisateur';
@@ -207,6 +212,7 @@ export class NotesService {
     const note = await this.noteRepository.findById(userId, id);
     if (!note) throw new NotFoundException('Note not found');
     await this.noteRepository.softDelete(userId, id);
+    void this.activityService.log(userId, 'DELETE', 'NOTE', id, { title: note.title });
   }
 
   findDeleted(userId: string) {
@@ -218,6 +224,7 @@ export class NotesService {
     const note = deleted.find(n => n.id === id);
     if (!note) throw new NotFoundException('Note not found in trash');
     await this.noteRepository.restore(userId, id);
+    void this.activityService.log(userId, 'RESTORE', 'NOTE', id, { title: note.title });
   }
 
   async permanentDelete(userId: string, id: string) {
@@ -303,6 +310,7 @@ export class NotesService {
       { noteId, sharedWithId: targetUser.id, permission },
       { conflictPaths: ['noteId', 'sharedWithId'] },
     );
+    void this.activityService.log(ownerId, 'SHARE', 'NOTE', noteId, { title: note.title, sharedWithEmail: email, permission });
     try {
       const owner = await this.userRepository.findOne({ where: { id: ownerId } });
       const ownerName = owner ? `${owner.firstName} ${owner.lastName}` : 'Un utilisateur';
@@ -401,5 +409,23 @@ export class NotesService {
     }
     const count = await this.versionRepository.count({ where: { noteId } });
     await this.versionRepository.save({ noteId, title, content, versionNumber: count + 1 });
+  }
+
+  async togglePublic(userId: string, id: string): Promise<Note> {
+    const note = await this.findOne(userId, id);
+    if (note.userId !== userId) {
+      throw new BadRequestException('Only the owner can toggle public status');
+    }
+    const isPublic = !note.isPublic;
+    const publicToken = isPublic ? (note.publicToken || require('crypto').randomUUID()) : null;
+    
+    await this.noteRepository.update(userId, id, { isPublic, publicToken });
+    return this.findOne(userId, id);
+  }
+
+  async findPublicNote(token: string): Promise<Note> {
+    const note = await this.noteRepository.findByPublicToken(token);
+    if (!note) throw new NotFoundException('Note public introuvable');
+    return note;
   }
 }

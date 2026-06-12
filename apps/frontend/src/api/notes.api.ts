@@ -13,7 +13,9 @@ export interface Note {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
-  sharedPermission?: 'READ' | 'WRITE'; // present when note is shared with current user
+  sharedPermission?: 'READ' | 'WRITE';
+  isPublic?: boolean;
+  publicToken?: string | null;
 }
 
 export interface NoteQuery {
@@ -67,4 +69,6 @@ export const notesApi = {
   restoreNote: (id: string) => client.patch(`/notes/${id}/restore`),
   permanentDelete: (id: string) => client.delete(`/notes/${id}/permanent`),
   emptyTrash: () => client.delete('/notes/trash'),
+  togglePublic: (id: string) => client.patch<Note>(`/notes/${id}/public`),
+  findPublicNote: (token: string) => client.get<Note>(`/public/notes/${token}`),
 };

@@ -14,6 +14,7 @@ const router = createRouter({
     { path: '/features', component: () => import('@/views/public/FeaturesView.vue') },
     { path: '/security', component: () => import('@/views/public/SecurityView.vue') },
     { path: '/contact', component: () => import('@/views/public/ContactView.vue') },
+    { path: '/public/notes/:token', component: () => import('@/views/notes/PublicNoteView.vue') },
 
     // Legal pages
     { path: '/legal/cgu', component: () => import('@/views/legal/CguView.vue') },
@@ -69,6 +70,7 @@ const router = createRouter({
         { path: '/notebooks', name: 'notebooks', component: () => import('@/views/notebooks/NotebooksDashboardView.vue') },
         { path: '/notebooks/:id', name: 'notebook-detail', component: () => import('@/views/notebooks/NotebookDetailView.vue') },
         { path: '/trash', name: 'trash', component: () => import('@/views/notes/TrashView.vue') },
+        { path: '/activity', name: 'activity', component: () => import('@/views/activity/ActivityView.vue') },
       ],
     },
   ],

@@ -20,6 +20,7 @@ import {
   Users,
   Calendar,
   Brain,
+  Clock,
 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import { Button } from '@/components/ui/button';
@@ -124,6 +125,11 @@ function goCalendar() {
 function goTrash() {
   emit('close');
   void router.push('/trash');
+}
+
+function goActivity() {
+  emit('close');
+  void router.push('/activity');
 }
 
 function goNotebooks() {
@@ -404,6 +410,17 @@ function handleTagDragStart(event: DragEvent, tag: { id: string; name: string })
             <span class="flex min-w-0 items-center gap-2">
               <Trash2 class="size-4" />
               <span v-if="!isCollapsed" class="truncate">Trash</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            :class="navItemClass(route.path === '/activity')"
+            title="Activité"
+            @click="goActivity"
+          >
+            <span class="flex min-w-0 items-center gap-2">
+              <Clock class="size-4" />
+              <span v-if="!isCollapsed" class="truncate">Activité</span>
             </span>
           </button>
         </section>

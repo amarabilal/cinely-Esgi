@@ -121,4 +121,11 @@ export class NoteTypeOrmRepository implements INoteRepository {
   async updateEmbedding(noteId: string, embeddingJson: string): Promise<void> {
     await this.repo.update({ id: noteId }, { embedding: embeddingJson });
   }
+
+  async findByPublicToken(token: string): Promise<Note | null> {
+    return this.repo.findOne({
+      where: { publicToken: token, isPublic: true, isDeleted: false },
+      relations: ['tags'],
+    });
+  }
 }

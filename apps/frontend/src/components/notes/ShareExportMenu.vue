@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { FileText, Hash, Printer, Share2, Type, Users, Calendar, Mail, Download } from 'lucide-vue-next';
+import { FileText, Hash, Printer, Share2, Type, Users, Calendar, Mail, Download, Globe, Copy, Check } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import { Button } from '@/components/ui/button';
 import { stripHtml } from '@/utils/notes';
 import GoogleCalendarModal from './GoogleCalendarModal.vue';
 import EmailNoteModal from './EmailNoteModal.vue';
+import { useNotesStore } from '@/stores/notes.store';
 
 const props = defineProps<{
   noteId: string;
@@ -13,6 +14,48 @@ const props = defineProps<{
   contentHtml: string;
   owner?: boolean;
 }>();
+
+const notesStore = useNotesStore();
+const note = computed(() => {
+  return notesStore.notes.find(n => n.id === props.noteId) ||
+         notesStore.sharedNotes.find(n => n.id === props.noteId) ||
+         (notesStore.currentNote?.id === props.noteId ? notesStore.currentNote : null);
+});
+
+const isTogglingPublic = ref(false);
+async function togglePublicLink() {
+  isTogglingPublic.value = true;
+  try {
+    await notesStore.togglePublic(props.noteId);
+    toast.success(note.value?.isPublic ? 'Note is now public' : 'Note is now private');
+  } catch (error: any) {
+    toast.error('Failed to update public status', {
+      description: error.message || 'Unknown error'
+    });
+  } finally {
+    isTogglingPublic.value = false;
+  }
+}
+
+const publicLink = computed(() => {
+  if (!note.value?.publicToken) return '';
+  return `${window.location.origin}/public/notes/${note.value.publicToken}`;
+});
+
+const copiedLink = ref(false);
+async function copyPublicLink() {
+  if (!publicLink.value) return;
+  try {
+    await navigator.clipboard.writeText(publicLink.value);
+    copiedLink.value = true;
+    toast.success('Public link copied to clipboard!');
+    setTimeout(() => {
+      copiedLink.value = false;
+    }, 2000);
+  } catch (error) {
+    toast.error('Failed to copy public link');
+  }
+}
 
 const emit = defineEmits<{ (e: 'share-people'): void }>();
 
@@ -323,6 +366,47 @@ onBeforeUnmount(() => {
         <Users class="size-4 shrink-0 text-muted-foreground" />
         Share with people…
       </button>
+
+      <!-- Public Sharing Section -->
+      <div v-if="owner" class="px-2 py-1.5 border-t border-border mt-1 pt-2">
+        <div class="flex items-center justify-between">
+          <span class="flex items-center gap-2 text-sm text-foreground font-medium">
+            <Globe class="size-4 text-muted-foreground animate-pulse" />
+            Public sharing
+          </span>
+          <button
+            type="button"
+            class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            :class="note?.isPublic ? 'bg-primary' : 'bg-muted'"
+            :disabled="isTogglingPublic"
+            @click.stop="togglePublicLink"
+          >
+            <span
+              class="pointer-events-none inline-block size-4 transform rounded-full bg-background shadow-lg ring-0 transition duration-200 ease-in-out"
+              :class="note?.isPublic ? 'translate-x-4' : 'translate-x-0'"
+            />
+          </button>
+        </div>
+        <div v-if="note?.isPublic && publicLink" class="flex items-center gap-1.5 mt-2">
+          <input
+            type="text"
+            readonly
+            :value="publicLink"
+            class="flex h-7 w-full rounded-md border border-input bg-muted/50 px-2 py-1 text-xs text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1"
+            @click.stop=""
+          />
+          <Button
+            size="icon"
+            variant="ghost"
+            class="size-7 shrink-0 hover:bg-accent"
+            @click.stop="copyPublicLink"
+          >
+            <Check v-slot:default v-if="copiedLink" class="size-3.5 text-green-500" />
+            <Copy v-slot:default v-else class="size-3.5" />
+          </Button>
+        </div>
+      </div>
+
       <div v-if="owner" class="my-1 h-px bg-border" />
       <button
         type="button"
