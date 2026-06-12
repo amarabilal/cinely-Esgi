@@ -19,6 +19,7 @@ import {
   Trash2,
   Users,
   Calendar,
+  Brain,
 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import { Button } from '@/components/ui/button';
@@ -116,6 +117,11 @@ function goDashboard() {
 function goCalendar() {
   emit('close');
   void router.push('/calendar');
+}
+
+function goNotebooks() {
+  emit('close');
+  void router.push('/notebooks');
 }
 
 function goSearch() {
@@ -314,6 +320,17 @@ function handleTagDragStart(event: DragEvent, tag: { id: string; name: string })
             <span class="flex min-w-0 items-center gap-2">
               <Calendar class="size-4" />
               <span v-if="!isCollapsed" class="truncate">Calendar</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            :class="navItemClass(route.path.startsWith('/notebooks'))"
+            title="Deep Research"
+            @click="goNotebooks"
+          >
+            <span class="flex min-w-0 items-center gap-2">
+              <Brain class="size-4 text-primary" />
+              <span v-if="!isCollapsed" class="truncate font-semibold text-primary">Deep Research</span>
             </span>
           </button>
           <button
