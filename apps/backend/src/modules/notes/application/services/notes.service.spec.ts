@@ -11,6 +11,7 @@ import { User } from '../../../auth/domain/entities/user.entity';
 import { Tag } from '../../../tags/domain/entities/tag.entity';
 import { Folder } from '../../../folders/domain/entities/folder.entity';
 import { NotesGateway } from '../../infrastructure/gateways/notes.gateway';
+import { ActivityService } from '../../../activity/application/services/activity.service';
 
 const makeNote = (overrides = {}) => ({
   id: 'note-1',
@@ -96,6 +97,12 @@ describe('NotesService', () => {
           provide: NotesGateway,
           useValue: {
             sendNotification: jest.fn(),
+          },
+        },
+        {
+          provide: ActivityService,
+          useValue: {
+            log: jest.fn().mockResolvedValue({}),
           },
         },
       ],

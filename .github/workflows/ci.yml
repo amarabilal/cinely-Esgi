@@ -86,7 +86,7 @@ jobs:
         working-directory: apps/backend
 
       - name: Audit frontend
-        run: npm ci && npm audit --audit-level=critical
+        run: npm install && npm audit --audit-level=critical
         working-directory: apps/frontend
 
   # ── Build + Push Docker ───────────────────────────────────────

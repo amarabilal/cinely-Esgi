@@ -23,4 +23,5 @@ export interface INoteRepository {
   permanentDelete(userId: string, id: string): Promise<void>;
   addTag(noteId: string, tagId: string): Promise<void>;
   removeTag(noteId: string, tagId: string): Promise<void>;
+  findByPublicToken(token: string): Promise<Note | null>;
 }

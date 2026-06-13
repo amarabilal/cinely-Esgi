@@ -15,6 +15,8 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 import { GoogleModule } from './modules/google/google.module';
 import { NotebooksModule } from './modules/notebooks/notebooks.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ActivityModule } from './modules/activity/activity.module';
+import { CommentsModule } from './modules/comments/comments.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -33,6 +35,8 @@ import { HealthController } from './health/health.controller';
     GoogleModule,
     NotebooksModule,
     NotificationsModule,
+    ActivityModule,
+    CommentsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

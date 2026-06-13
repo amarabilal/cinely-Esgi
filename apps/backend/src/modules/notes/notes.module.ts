@@ -10,6 +10,7 @@ import { NOTE_REPOSITORY } from './domain/repositories/note.repository.interface
 import { NoteTypeOrmRepository } from './infrastructure/repositories/note.typeorm.repository';
 import { NotesService } from './application/services/notes.service';
 import { NotesController } from './infrastructure/controllers/notes.controller';
+import { PublicNotesController } from './infrastructure/controllers/public-notes.controller';
 import { NotesGateway } from './infrastructure/gateways/notes.gateway';
 import { AiModule } from '../ai/ai.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -25,6 +26,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
     NotesGateway,
     { provide: NOTE_REPOSITORY, useClass: NoteTypeOrmRepository },
   ],
-  controllers: [NotesController],
+  controllers: [NotesController, PublicNotesController],
 })
 export class NotesModule {}
