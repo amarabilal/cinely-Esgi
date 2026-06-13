@@ -35,7 +35,7 @@ export class NotificationsController {
   }
 
   @Delete(':id')
-  @HttpCode(24)
+  @HttpCode(204)
   @ApiOperation({ summary: 'Delete a notification' })
   async remove(@CurrentUser() user: { sub: string }, @Param('id') id: string) {
     await this.notificationsService.remove(user.sub, id);

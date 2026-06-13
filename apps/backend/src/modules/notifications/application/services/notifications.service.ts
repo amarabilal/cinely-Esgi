@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Notification } from '../../domain/entities/notification.entity';
+import { Notification, NotificationType } from '../../domain/entities/notification.entity';
 
 @Injectable()
 export class NotificationsService {
@@ -19,7 +19,7 @@ export class NotificationsService {
 
   async create(
     userId: string,
-    type: string,
+    type: NotificationType,
     message: string,
     metadata?: Record<string, any>,
   ): Promise<Notification> {
