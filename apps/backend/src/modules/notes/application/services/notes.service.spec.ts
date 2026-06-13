@@ -3,13 +3,13 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { NotesService } from './notes.service';
 import { AiService } from '../../../ai/application/services/ai.service';
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import { NOTE_REPOSITORY } from '../../domain/repositories/note.repository.interface';
 import { NoteVersion } from '../../domain/entities/note-version.entity';
 import { NoteShare } from '../../domain/entities/note-share.entity';
 import { User } from '../../../auth/domain/entities/user.entity';
 import { Tag } from '../../../tags/domain/entities/tag.entity';
 import { Folder } from '../../../folders/domain/entities/folder.entity';
-import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import { NotesGateway } from '../../infrastructure/gateways/notes.gateway';
 
 const makeNote = (overrides = {}) => ({
@@ -89,6 +89,7 @@ describe('NotesService', () => {
           provide: NotificationsService,
           useValue: {
             create: jest.fn().mockResolvedValue({}),
+            sendToUser: jest.fn().mockResolvedValue(undefined),
           },
         },
         {

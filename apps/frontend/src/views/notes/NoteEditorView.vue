@@ -7,6 +7,8 @@ import { richTextExtensions, loadCodeHighlighting } from '@/editor/extensions';
 import { useAuthStore } from '@/stores/auth.store';
 import { useNotesStore } from '@/stores/notes.store';
 import { useNoteSync } from '@/composables/useNoteSync';
+import { pickAndInsertImage } from '@/composables/useImageUpload';
+import { getAccessToken } from '@/lib/tokenStore';
 import { RemoteCursorExtension, setCursors } from '@/composables/RemoteCursorExtension';
 import { aiApi } from '@/api/ai.api';
 import { notesApi } from '@/api/notes.api';
@@ -27,7 +29,7 @@ import {
   ListChecks, Quote, Code2, Minus, Plus, Link2, Link2Off,
   Palette, Highlighter, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
-  Table as TableIcon, Rows3, Columns3, Trash, RemoveFormatting,
+  Table as TableIcon, Rows3, Columns3, Trash, RemoveFormatting, ImagePlus,
 } from 'lucide-vue-next';
 
 const route = useRoute();
@@ -172,15 +174,19 @@ async function loadNote(id: string) {
   editor.value?.commands.setContent(note.content || '');
   editor.value?.setEditable(store.canEdit);
 
-  if (auth.accessToken) {
-    await noteSync.joinNote(auth.accessToken, note.id);
+  // Read the freshest token from localStorage (the refresh interceptor keeps it
+  // current) so the socket handshake never uses a stale access token.
+  const token = getAccessToken();
+  if (token) {
+    await noteSync.joinNote(token, note.id);
   }
 }
 
 onMounted(async () => {
-  if (!auth.user) await auth.fetchMe().catch(() => auth.clearAuth());
+  if (!auth.user) await auth.fetchMe().catch(() => { void auth.clearAuth(); });
   if (store.notes.length === 0) await store.fetchNotes();
-  if (auth.accessToken) noteSync.connect(auth.accessToken);
+  const token = getAccessToken();
+  if (token) noteSync.connect(token);
   await loadNote(route.params.id as string);
   // Lazily pull in syntax-highlighting grammars (separate async chunk) once the
   // editor is up — keeps them out of the initial editor bundle.
@@ -463,6 +469,12 @@ function clearFormatting() {
   run(() => editor.value!.chain().focus().unsetAllMarks().clearNodes().run());
 }
 
+// Image — capture/pick, upload, then insert (gated by canEdit).
+function insertImage() {
+  if (!store.canEdit || !editor.value) return;
+  void pickAndInsertImage(editor.value);
+}
+
 // ── Word count / reading time ──────────────────────────────────
 const wordCount = computed(() => {
   editorTick.value; // reactivity
@@ -673,7 +685,7 @@ const readingTime = computed(() => {
       </div>
 
       <!-- Format toolbar -->
-      <div class="flex flex-wrap items-center gap-0.5 border-t border-border px-3 py-1.5 md:px-4">
+      <div class="flex flex-wrap items-center gap-1.5 border-t border-border px-3 py-2 md:gap-1 md:px-4">
         <!-- Inline marks -->
         <button
           type="button" title="Bold" :disabled="!store.canEdit"
@@ -809,6 +821,13 @@ const readingTime = computed(() => {
             class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:cursor-default">
             <component :is="TableIcon" class="size-4 shrink-0" />
             Insert table
+          </button>
+          <button
+            type="button" :disabled="!store.canEdit"
+            @click="insertImage"
+            class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:cursor-default">
+            <component :is="ImagePlus" class="size-4 shrink-0" />
+            Insert image
           </button>
           <template v-if="inTable">
             <div class="my-1 h-px bg-border" />
@@ -988,7 +1007,7 @@ const readingTime = computed(() => {
             v-if="editor && store.canEdit"
             :editor="editor"
             :tippy-options="{ duration: 100 }"
-            class="flex items-center gap-0.5 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+            class="bubble-menu flex items-center gap-0.5 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg">
             <button
               type="button" title="Bold"
               @click="editor!.chain().focus().toggleBold().run()"
@@ -1076,10 +1095,15 @@ const readingTime = computed(() => {
 
 <style scoped>
 :deep(.prose-editor) {
-  min-height: 58vh;
+  min-height: 40dvh;
   color: hsl(var(--foreground) / 0.9);
   font-size: 0.9375rem;
   line-height: 1.75;
+}
+@media (min-width: 768px) {
+  :deep(.prose-editor) {
+    min-height: 58vh;
+  }
 }
 :deep(.prose-editor h1) { font-size: 1.5rem; font-weight: 700; margin: 1rem 0 0.5rem; color: hsl(var(--foreground)); }
 :deep(.prose-editor h2) { font-size: 1.25rem; font-weight: 600; margin: 0.875rem 0 0.375rem; color: hsl(var(--foreground)); }
@@ -1112,20 +1136,28 @@ const readingTime = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 0.375rem;
-  transition: background-color 0.15s, color 0.15s;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  /* Kill the native WebView button chrome (the grey boxes on Android). */
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 }
 .tbtn:disabled { opacity: 0.3; cursor: default; }
-.tbtn-on { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+.tbtn-on { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); border-color: hsl(var(--border)); }
 .tbtn-off { color: hsl(var(--muted-foreground)); }
 .tbtn-off:not(:disabled):hover { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+/* Smaller, denser buttons inside the floating selection bubble menu. */
+.bubble-menu .tbtn { width: 1.75rem; height: 1.75rem; }
 .tbar-sep {
   display: inline-block;
   width: 1px;
-  height: 1rem;
-  margin: 0 0.25rem;
+  height: 1.25rem;
+  margin: 0 0.375rem;
   background: hsl(var(--border));
 }
 
@@ -1207,6 +1239,19 @@ const readingTime = computed(() => {
   border: none;
   border-top: 1px solid hsl(var(--border));
   margin: 1rem 0;
+}
+
+/* ── Images (uploaded photo attachments) ──────────────────────── */
+:deep(.prose-editor img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 0.75rem 0;
+  display: block;
+}
+:deep(.prose-editor img.ProseMirror-selectednode) {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
 }
 
 /* ── Code block syntax highlighting (lowlight / hljs tokens) ───── */

@@ -64,7 +64,7 @@ const measures = [
               :key="item.label"
               class="flex flex-col gap-2 px-6 py-4 sm:flex-row"
             >
-              <span class="w-52 shrink-0 text-sm font-medium text-foreground">{{ item.label }}</span>
+              <span class="w-full sm:w-52 shrink-0 text-sm font-medium text-foreground">{{ item.label }}</span>
               <span class="text-sm text-muted-foreground">{{ item.detail }}</span>
             </div>
           </div>

@@ -15,6 +15,7 @@ import TableRow from '@tiptap/extension-table-row';
 import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import Typography from '@tiptap/extension-typography';
+import Image from '@tiptap/extension-image';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { createLowlight } from 'lowlight';
 import { SlashCommand } from './slash-command';
@@ -84,6 +85,7 @@ export function richTextExtensions(): AnyExtension[] {
     TableRow,
     TableHeader,
     TableCell,
+    Image.configure({ inline: false, allowBase64: false }),
     Typography, // smart quotes, dashes, arrows like Notion/Docs
     CodeBlockLowlight.configure({ lowlight }),
     SlashCommand,

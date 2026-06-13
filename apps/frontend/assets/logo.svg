@@ -1,0 +1,39 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7c34e6"/>
+      <stop offset="1" stop-color="#6b26d9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Solid brand-accent background fills the full 1024 canvas; Android applies its own mask. -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <!--
+    Centered glyph: a minimalist note/document with a folded top-right corner
+    and three text lines. White on accent, ~20% safe margin so the adaptive
+    mask never crops it. Bounding box ~ x[314..710], y[286..738].
+  -->
+  <g>
+    <!-- Document body. Folded corner cut from top-right (corner = 96px). -->
+    <path d="M338 286
+             H586
+             L710 410
+             V702
+             a36 36 0 0 1 -36 36
+             H338
+             a36 36 0 0 1 -36 -36
+             V322
+             a36 36 0 0 1 36 -36 Z"
+          fill="#ffffff"/>
+
+    <!-- Folded corner triangle, slightly tinted so the fold reads. -->
+    <path d="M586 286 L710 410 H622 a36 36 0 0 1 -36 -36 Z"
+          fill="#d9c6f6"/>
+
+    <!-- Three text lines, brand-accent on the white page. -->
+    <rect x="370" y="492" width="272" height="34" rx="17" fill="#6b26d9"/>
+    <rect x="370" y="566" width="272" height="34" rx="17" fill="#6b26d9"/>
+    <rect x="370" y="640" width="176" height="34" rx="17" fill="#9863ee"/>
+  </g>
+</svg>

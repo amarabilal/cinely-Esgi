@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { LayoutDashboard, LogOut, Menu, Plus, Search, Settings, Sparkles, UserRound } from 'lucide-vue-next';
+import { LayoutDashboard, LogOut, Plus, Search, Settings, Sparkles, UserRound } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Kbd } from '@/components/ui/kbd';
 import ThemeToggle from '@/components/ThemeToggle.vue';
@@ -11,7 +11,6 @@ const emit = defineEmits<{
   openCommand: [];
   newNote: [];
   logout: [];
-  toggleSidebar: [];
 }>();
 
 const menuOpen = ref(false);
@@ -19,16 +18,6 @@ const menuOpen = ref(false);
 
 <template>
   <header class="flex h-12 items-center gap-3 border-b bg-background px-3 md:px-4">
-    <Button
-      variant="ghost"
-      size="icon"
-      class="md:hidden"
-      aria-label="Open navigation"
-      @click="emit('toggleSidebar')"
-    >
-      <Menu class="size-4" />
-    </Button>
-
     <RouterLink to="/" class="flex items-center gap-2 rounded-md px-1 text-sm font-semibold tracking-tight">
       <span class="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
         <Sparkles class="size-3.5" />
@@ -47,16 +36,6 @@ const menuOpen = ref(false);
     </button>
 
     <div class="ml-auto flex items-center gap-1.5">
-      <Button
-        variant="ghost"
-        size="icon"
-        class="md:hidden"
-        aria-label="Search"
-        @click="emit('openCommand')"
-      >
-        <Search class="size-4" />
-      </Button>
-
       <ThemeToggle />
 
       <NotificationsDropdown />
@@ -66,7 +45,7 @@ const menuOpen = ref(false);
         New
       </Button>
 
-      <div class="relative">
+      <div class="relative hidden md:block">
         <Button
           variant="ghost"
           size="icon"
@@ -78,7 +57,7 @@ const menuOpen = ref(false);
 
         <div
           v-if="menuOpen"
-          class="absolute right-0 top-10 z-50 w-48 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg"
+          class="absolute right-0 top-10 z-50 w-48 max-w-[calc(100vw-1rem)] rounded-md border bg-popover p-1 text-popover-foreground shadow-lg"
         >
           <RouterLink
             to="/dashboard"

@@ -149,7 +149,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
           <p class="mb-2 font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             New tag
           </p>
-          <form class="flex items-center gap-2" @submit.prevent="createTag">
+          <form class="flex flex-wrap items-center gap-2" @submit.prevent="createTag">
             <input
               type="color"
               v-model="newColor"
@@ -161,7 +161,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
               v-model="newName"
               type="text"
               placeholder="Tag name"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              class="min-w-0 flex-1 basis-[10rem] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
             >
             <Button type="submit" size="sm" :disabled="isCreating || !newName.trim()">
               <Plus class="size-4" />
@@ -182,7 +182,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
               :key="tag.id"
               class="rounded-md border bg-card px-2.5 py-2"
             >
-              <div class="flex items-center gap-2">
+              <div class="flex flex-wrap items-center gap-2">
                 <input
                   v-if="drafts[tag.id]"
                   type="color"
@@ -195,7 +195,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
                   v-model="drafts[tag.id].name"
                   type="text"
                   :aria-label="`Name for ${tag.name}`"
-                  class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                  class="min-w-0 flex-1 basis-[8rem] rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                   @keydown.enter.prevent="saveTag(tag)"
                 >
 

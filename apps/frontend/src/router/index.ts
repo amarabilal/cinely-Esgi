@@ -1,6 +1,7 @@
 import { nextTick } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth.store';
+import { isNative } from '@/lib/platform';
 
 type DocWithVT = Document & {
   startViewTransition?: (cb: () => void | Promise<void>) => { finished: Promise<void> };
@@ -74,8 +75,16 @@ const router = createRouter({
   ],
 });
 
+// On native, the marketing pages are not part of the app — entering one
+// (including the default '/' landing) bounces to the app, which the auth
+// guard then resolves to '/notes' or '/login'.
+const MARKETING_PATHS = new Set(['/', '/features', '/security', '/contact']);
+
 router.beforeEach((to) => {
   const auth = useAuthStore();
+  if (isNative && MARKETING_PATHS.has(to.path)) {
+    return auth.isAuthenticated ? '/notes' : '/login';
+  }
   if (to.meta.requiresAuth && !auth.isAuthenticated) return '/login';
   if (to.meta.guest && auth.isAuthenticated) return '/notes';
 });
