@@ -37,7 +37,7 @@ function submit() {
             v-model="name"
             type="text"
             required
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
         <div class="space-y-1.5">
@@ -46,7 +46,7 @@ function submit() {
             v-model="email"
             type="email"
             required
-            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
         <div class="space-y-1.5">
@@ -55,7 +55,7 @@ function submit() {
             v-model="message"
             rows="5"
             required
-            class="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           ></textarea>
         </div>
         <Button type="submit" class="w-full">Send message</Button>

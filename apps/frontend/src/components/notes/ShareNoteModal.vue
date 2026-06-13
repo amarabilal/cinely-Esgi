@@ -68,11 +68,11 @@ function onKeydown(e: KeyboardEvent) {
     <Transition name="modal">
       <div
         v-if="open"
-        class="fixed inset-0 z-[60] flex items-start justify-center bg-background/70 p-4 pt-[18vh] backdrop-blur-sm"
+        class="fixed inset-0 z-[60] flex items-start justify-center bg-background/70 p-4 pt-[8vh] sm:pt-[18vh] backdrop-blur-sm"
         @click.self="open = false"
       >
         <div
-          class="modal-panel w-full max-w-md rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl"
+          class="modal-panel w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl"
           role="dialog"
           aria-modal="true"
           aria-label="Share note"
@@ -83,7 +83,7 @@ function onKeydown(e: KeyboardEvent) {
               <Users class="size-4 text-primary" />
               Share note
             </div>
-            <button aria-label="Close" class="text-muted-foreground transition-colors hover:text-foreground" @click="open = false">
+            <button aria-label="Close" class="-m-3 flex items-center justify-center rounded-md p-3 text-muted-foreground transition-colors hover:text-foreground" @click="open = false">
               <X class="size-4" />
             </button>
           </div>

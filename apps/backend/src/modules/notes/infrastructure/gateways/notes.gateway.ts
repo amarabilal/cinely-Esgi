@@ -31,7 +31,12 @@ function colorFor(id: string): string {
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: [
+      process.env.FRONTEND_URL || 'http://localhost:5173',
+      'https://localhost',
+      'capacitor://localhost',
+      'http://localhost',
+    ],
     credentials: true,
   },
 })

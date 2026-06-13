@@ -1,6 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
+
+export type NotificationType = 'SHARE' | 'EDIT' | 'SYSTEM';
 
 @Entity('notifications')
+@Index('idx_notifications_user_id', ['userId'])
+@Index('idx_notifications_user_read', ['userId', 'read'])
 export class Notification {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -9,7 +13,7 @@ export class Notification {
   userId: string;
 
   @Column()
-  type: string; // 'SHARE' | 'EDIT' | 'SYSTEM'
+  type: NotificationType;
 
   @Column()
   message: string;

@@ -73,7 +73,7 @@ onMounted(() => {
       toast.info(payload.message, {
         action: payload.metadata?.noteId ? {
           label: 'Voir',
-          onClick: () => router.push(`/notes/${payload.metadata.noteId}`),
+          onClick: () => router.push(`/notes/${payload.metadata?.noteId}`),
         } : undefined,
       });
     });

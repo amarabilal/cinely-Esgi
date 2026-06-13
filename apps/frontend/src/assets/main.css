@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Unlayered so it beats Tailwind's preflight (which sets `-webkit-appearance:
+   button` inside @layer base): strip the native control chrome the Android
+   WebView paints as grey boxes behind buttons. All buttons are CSS-styled. */
+button,
+[type='button'],
+[type='submit'],
+[type='reset'] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -399,6 +411,20 @@
 }
 
 @layer utilities {
+  /* ---- Safe-area insets (notch / home-indicator on iOS & Android) ----
+     Resolve to 0 on devices without insets (incl. all desktop browsers),
+     so the web layout is unchanged. Requires viewport-fit=cover in the
+     viewport meta to be non-zero. */
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  /* Generous bottom padding for bottom sheets: breathing room + the inset. */
+  .pb-safe-lg { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+  /* Scroll without a visible scrollbar (horizontal chip rows). */
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .inset-safe-b { bottom: calc(1rem + env(safe-area-inset-bottom)); }
+  .inset-safe-r { right: calc(1rem + env(safe-area-inset-right)); }
+
   /* ---- Page / view transitions (route → route, incl. note→note & filter→filter) ----
      Visible ease-in-out fade + slide + subtle scale so navigating anywhere
      (pages, notes, library filters) animates in and out. Paired with a

@@ -113,7 +113,7 @@ onBeforeUnmount(() => {
   <Teleport to="body">
     <Transition name="modal">
       <div v-if="open" class="fixed inset-0 z-50 bg-background/80 p-3 backdrop-blur-sm" @click.self="open = false">
-        <div class="modal-panel mx-auto mt-[12vh] w-full max-w-xl overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-2xl">
+        <div class="modal-panel mx-auto mt-6 sm:mt-[12vh] w-full max-w-xl overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-2xl">
         <div class="flex h-12 items-center gap-3 border-b px-3">
           <Search class="size-4 text-muted-foreground" />
           <input
@@ -126,7 +126,7 @@ onBeforeUnmount(() => {
           <Kbd>Esc</Kbd>
         </div>
 
-        <div class="max-h-[420px] overflow-y-auto p-2 scrollbar-thin">
+        <div class="max-h-[min(420px,60dvh)] overflow-y-auto p-2 scrollbar-thin">
           <p class="px-2 py-1.5 font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             Actions
           </p>

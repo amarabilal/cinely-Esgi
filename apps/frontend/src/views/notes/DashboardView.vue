@@ -23,7 +23,7 @@ function formatDate(dateStr: string) {
 
 <template>
   <div class="h-full overflow-y-auto bg-background text-foreground">
-    <div class="mx-auto max-w-4xl px-6 py-8">
+    <div class="mx-auto max-w-4xl px-4 sm:px-6 py-8">
       <!-- Page header -->
       <header class="mb-8">
         <p class="font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
@@ -81,7 +81,7 @@ function formatDate(dateStr: string) {
             <span class="w-3 h-3 rounded-full shrink-0" :style="{ backgroundColor: tag.color }"></span>
             <span class="text-sm text-foreground flex-1">{{ tag.name }}</span>
             <span class="text-sm font-semibold text-muted-foreground">{{ tag.noteCount }}</span>
-            <div class="w-24 bg-muted rounded-full h-1.5 overflow-hidden">
+            <div class="w-16 flex-1 max-w-24 bg-muted rounded-full h-1.5 overflow-hidden">
               <div class="h-full rounded-full"
                 :style="{ width: `${Math.min(100, (tag.noteCount / (stats!.topTags[0]?.noteCount || 1)) * 100)}%`, backgroundColor: tag.color }">
               </div>

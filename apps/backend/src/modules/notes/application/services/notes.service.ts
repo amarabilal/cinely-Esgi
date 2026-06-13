@@ -9,10 +9,10 @@ import { User } from '../../../auth/domain/entities/user.entity';
 import { Tag } from '../../../tags/domain/entities/tag.entity';
 import { Folder } from '../../../folders/domain/entities/folder.entity';
 import { AiService } from '../../../ai/application/services/ai.service';
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import { CreateNoteDto } from '../dto/create-note.dto';
 import { UpdateNoteDto } from '../dto/update-note.dto';
 import { QueryNotesDto } from '../dto/query-notes.dto';
-import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import { NotesGateway } from '../../infrastructure/gateways/notes.gateway';
 import { ActivityService } from '../../../activity/application/services/activity.service';
 
@@ -186,7 +186,9 @@ export class NotesService {
       void this.activityService.log(userId, 'EDIT', 'NOTE', id, { title: updated.title });
       try {
         const editorUser = await this.userRepository.findOne({ where: { id: userId } });
-        const editorName = editorUser ? `${editorUser.firstName} ${editorUser.lastName}` : 'Un utilisateur';
+        const editorName = editorUser
+          ? `${editorUser.firstName ?? ''} ${editorUser.lastName ?? ''}`.trim() || 'Un utilisateur'
+          : 'Un utilisateur';
         const message = `${editorName} a mis à jour la note "${updated.title || 'Sans titre'}".`;
         
         if (updated.userId !== userId) {
@@ -313,13 +315,24 @@ export class NotesService {
     void this.activityService.log(ownerId, 'SHARE', 'NOTE', noteId, { title: note.title, sharedWithEmail: email, permission });
     try {
       const owner = await this.userRepository.findOne({ where: { id: ownerId } });
-      const ownerName = owner ? `${owner.firstName} ${owner.lastName}` : 'Un utilisateur';
+      const ownerName = owner
+        ? `${owner.firstName ?? ''} ${owner.lastName ?? ''}`.trim() || 'Un utilisateur'
+        : 'Un utilisateur';
       const message = `${ownerName} a partagé la note "${note.title || 'Sans titre'}" avec vous.`;
       const notification = await this.notificationsService.create(targetUser.id, 'SHARE', message, { noteId });
       this.notesGateway.sendNotification(targetUser.id, notification);
     } catch (err: any) {
       this.logger.warn(`Failed to send share notification: ${err.message}`);
     }
+
+    // Best-effort FCM push to the recipient's mobile devices. Never block or fail the share.
+    await this.notificationsService
+      .sendToUser(targetUser.id, {
+        title: 'New shared note',
+        body: `Someone shared "${note.title || 'a note'}" with you`,
+        data: { noteId },
+      })
+      .catch(() => {});
   }
 
   async updateSharePermission(

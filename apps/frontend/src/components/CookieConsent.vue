@@ -30,7 +30,7 @@ function decline() {
 <template>
   <Transition name="slide-up">
     <div v-if="visible"
-      class="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:max-w-md z-50 bg-card border border-border text-card-foreground rounded-2xl shadow-lg p-5">
+      class="fixed bottom-0 pb-safe left-4 right-4 md:left-auto md:right-6 md:max-w-md z-50 bg-card border border-border text-card-foreground rounded-2xl shadow-lg p-5">
       <p class="text-sm text-foreground mb-1 font-medium">We use cookies</p>
       <p class="text-xs text-muted-foreground mb-4">
         We use analytics cookies (Matomo) to understand how you use our app.

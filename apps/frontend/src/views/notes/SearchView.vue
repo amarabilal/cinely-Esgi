@@ -120,7 +120,7 @@ onBeforeUnmount(() => clearTimer());
             v-if="hasQuery"
             type="button"
             aria-label="Clear search"
-            class="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="absolute right-2 top-1/2 flex size-8 sm:size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             @click="clearSearch"
           >
             <X class="size-4" />
