@@ -16,7 +16,7 @@ async function toggleAppLock(value: boolean) {
   appLockEnabled.value = appLock.isEnabled();
 }
 
-const activeTab = ref<'profile' | 'security' | 'sessions'>('profile');
+const activeTab = ref<'profile' | 'security' | 'sessions' | 'google'>('profile');
 
 // Profile
 const firstName = ref('');
@@ -45,6 +45,53 @@ const recoveryCodes = ref<string[]>([]);
 const disableCode = ref('');
 const disableError = ref('');
 
+// Google Integration State
+const googleConnected = ref(false);
+const googleEmail = ref('');
+const googleLoading = ref(false);
+
+async function checkGoogleStatus() {
+  try {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return;
+    const res = await fetch('/api/google/status', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      googleConnected.value = data.connected;
+      googleEmail.value = data.email || '';
+    }
+  } catch (err) {
+    console.error('Failed to get Google status', err);
+  }
+}
+
+function connectGoogle() {
+  const token = localStorage.getItem('accessToken');
+  if (!token) return;
+  window.location.href = `/api/google/auth?token=${encodeURIComponent(token)}`;
+}
+
+async function disconnectGoogle() {
+  googleLoading.value = true;
+  try {
+    const token = localStorage.getItem('accessToken');
+    const res = await fetch('/api/google/disconnect', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
+      googleConnected.value = false;
+      googleEmail.value = '';
+    }
+  } catch (err) {
+    console.error('Failed to disconnect Google', err);
+  } finally {
+    googleLoading.value = false;
+  }
+}
+
 onMounted(async () => {
   await store.fetchProfile();
   await store.fetchSessions();
@@ -52,6 +99,15 @@ onMounted(async () => {
     firstName.value = store.profile.firstName;
     lastName.value = store.profile.lastName;
   }
+
+  // Check URL params for success redirect
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('google_connected') === 'success') {
+    activeTab.value = 'google';
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  await checkGoogleStatus();
 });
 
 async function saveProfile() {
@@ -139,8 +195,8 @@ function formatDate(dateStr: string) {
       </header>
 
       <!-- Tabs -->
-      <div class="flex gap-1 mb-8 bg-muted rounded-xl p-1 max-w-md">
-        <button v-for="[key, label] in [['profile', 'Profile'], ['security', 'Security'], ['sessions', 'Sessions']]"
+      <div class="flex gap-1 mb-8 bg-muted rounded-xl p-1 max-w-lg">
+        <button v-for="[key, label] in [['profile', 'Profile'], ['security', 'Security'], ['sessions', 'Sessions'], ['google', 'Google']]"
           :key="key"
           @click="activeTab = key as any"
           class="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -309,6 +365,44 @@ function formatDate(dateStr: string) {
           </div>
           <Button variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="store.revokeSession(session.id)">
             Revoke
+          </Button>
+        </div>
+      </div>
+
+      <!-- Google Tab -->
+      <div v-if="activeTab === 'google'" class="bg-card border border-border rounded-xl p-6 space-y-6">
+        <div>
+          <h2 class="text-base font-semibold text-foreground">Google Integration</h2>
+          <p class="text-sm text-muted-foreground mt-0.5">
+            Connect your Google Account to automatically sync notes as calendar events, export documents directly to Google Drive, and send emails via Gmail.
+          </p>
+        </div>
+
+        <div class="flex items-center justify-between py-4 border-y border-border">
+          <div class="flex items-center gap-3">
+            <svg class="h-6 w-6 text-foreground" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12.24 10.285V13.4h6.887C18.2 15.614 15.645 18 12.24 18c-3.86 0-7-3.14-7-7s3.14-7 7-7c1.7 0 3.3 0.64 4.5 1.84l2.42-2.42C17.38 1.75 14.93 1 12.24 1 6.57 1 2 5.57 2 11.24s4.57 10.24 10.24 10.24c5.79 0 10.24-4.11 10.24-10.24 0-.69-.08-1.35-.22-1.95H12.24z"/>
+            </svg>
+            <div>
+              <p class="text-sm font-semibold text-foreground">
+                {{ googleConnected ? 'Google Account Connected' : 'Google Account Not Connected' }}
+              </p>
+              <p class="text-xs text-muted-foreground">
+                {{ googleConnected ? `Linked as ${googleEmail}` : 'Connect your account to enable features.' }}
+              </p>
+            </div>
+          </div>
+          <Badge :variant="googleConnected ? 'default' : 'secondary'">
+            {{ googleConnected ? 'Connected' : 'Disconnected' }}
+          </Badge>
+        </div>
+
+        <div class="flex gap-2">
+          <Button v-if="!googleConnected" @click="connectGoogle">
+            Connect Google Account
+          </Button>
+          <Button v-else variant="destructive" :disabled="googleLoading" @click="disconnectGoogle">
+            {{ googleLoading ? 'Disconnecting…' : 'Disconnect Google Account' }}
           </Button>
         </div>
       </div>

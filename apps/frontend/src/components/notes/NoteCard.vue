@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { FileText, GripVertical } from 'lucide-vue-next';
+import { FileText, GripVertical, Pin } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import { Badge } from '@/components/ui/badge';
 import { extractFirstImage, formatRelativeTime, stripHtml } from '@/utils/notes';
@@ -115,7 +115,16 @@ async function onTagDrop(event: DragEvent) {
       <GripVertical class="size-3.5" />
     </span>
 
-    <div class="flex min-w-0 flex-1 items-start gap-5">
+    <!-- Pin indicator -->
+    <span
+      v-if="note.isPinned"
+      class="absolute right-2 top-2 text-primary"
+      title="Pinned"
+    >
+      <Pin class="size-3.5 fill-primary" />
+    </span>
+
+    <div class="flex min-w-0 flex-1 items-start gap-3">
       <div class="transition-transform duration-200 ease-out group-hover:translate-x-3">
         <div
           v-if="imageUrl"

@@ -15,6 +15,16 @@ export interface RemoteCursor extends UserPresence {
   to: number;
 }
 
+export interface NotificationPayload {
+  id: string;
+  userId: string;
+  type: 'SHARE' | 'EDIT' | 'SYSTEM';
+  message: string;
+  read: boolean;
+  metadata?: Record<string, any>;
+  createdAt: string;
+}
+
 export interface NoteUpdatePayload {
   noteId: string;
   title: string;
@@ -66,6 +76,7 @@ const shareRevokedHandlers: Handler<ShareRevokedPayload>[] = [];
 const noteTagsUpdatedHandlers: Handler<NoteTagsUpdatedPayload>[] = [];
 const noteDeletedHandlers: Handler<NoteDeletedPayload>[] = [];
 const noteArchivedHandlers: Handler<NoteArchivedPayload>[] = [];
+const notificationHandlers: Handler<NotificationPayload>[] = [];
 
 function register<T>(list: Handler<T>[], h: Handler<T>) {
   list.push(h);
@@ -133,6 +144,10 @@ function getSocket(token: string): Socket {
     noteArchivedHandlers.forEach(h => h(p));
   });
 
+  socket.on('notification:new', (p: NotificationPayload) => {
+    notificationHandlers.forEach(h => h(p));
+  });
+
   return socket;
 }
 
@@ -196,6 +211,10 @@ export function useNoteSync() {
     return register(noteArchivedHandlers, h);
   }
 
+  function onNotificationNew(h: Handler<NotificationPayload>) {
+    return register(notificationHandlers, h);
+  }
+
   function disconnect() {
     socket?.disconnect();
     socket = null;
@@ -210,6 +229,7 @@ export function useNoteSync() {
     emitUpdate, emitCursor,
     onNoteUpdate, onPermissionChanged, onShareRevoked,
     onTagsUpdated, onNoteDeleted, onNoteArchived,
+    onNotificationNew,
     disconnect,
   };
 }

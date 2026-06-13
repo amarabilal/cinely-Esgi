@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -6,6 +6,7 @@ import {
 } from 'firebase-admin/app';
 import { getMessaging, BatchResponse } from 'firebase-admin/messaging';
 import { DeviceToken } from '../../domain/entities/device-token.entity';
+import { Notification, NotificationType } from '../../domain/entities/notification.entity';
 
 export interface PushPayload {
   title: string;
@@ -19,6 +20,13 @@ const STALE_TOKEN_ERROR_CODES = [
   'messaging/invalid-argument',
 ];
 
+/**
+ * Two responsibilities live here:
+ *  - In-app notifications (persisted, surfaced in the web notifications dropdown
+ *    and pushed live over the socket gateway).
+ *  - FCM push to registered mobile devices (best-effort; no-op without Firebase).
+ * They were developed on separate branches and reconciled into one service.
+ */
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -29,9 +37,63 @@ export class NotificationsService {
   private initialized = false;
 
   constructor(
+    @InjectRepository(Notification)
+    private readonly notificationRepository: Repository<Notification>,
     @InjectRepository(DeviceToken)
     private readonly deviceTokenRepository: Repository<DeviceToken>,
   ) {}
+
+  // --- In-app notifications --------------------------------------------------
+
+  async findAll(userId: string): Promise<Notification[]> {
+    return this.notificationRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async create(
+    userId: string,
+    type: NotificationType,
+    message: string,
+    metadata?: Record<string, any>,
+  ): Promise<Notification> {
+    const notification = this.notificationRepository.create({
+      userId,
+      type,
+      message,
+      read: false,
+      metadata,
+    });
+    return this.notificationRepository.save(notification);
+  }
+
+  async markAsRead(userId: string, id: string): Promise<Notification> {
+    const notification = await this.notificationRepository.findOne({
+      where: { id, userId },
+    });
+    if (!notification) {
+      throw new NotFoundException('Notification not found');
+    }
+    notification.read = true;
+    return this.notificationRepository.save(notification);
+  }
+
+  async markAllAsRead(userId: string): Promise<void> {
+    await this.notificationRepository.update({ userId, read: false }, { read: true });
+  }
+
+  async remove(userId: string, id: string): Promise<void> {
+    const notification = await this.notificationRepository.findOne({
+      where: { id, userId },
+    });
+    if (!notification) {
+      throw new NotFoundException('Notification not found');
+    }
+    await this.notificationRepository.remove(notification);
+  }
+
+  // --- FCM push to mobile devices --------------------------------------------
 
   /**
    * Upsert a device token by its (unique) token value: if a row already exists

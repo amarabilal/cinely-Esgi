@@ -73,6 +73,6 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     user, accessToken, pendingTwoFactor, isAuthenticated,
     login, logout, register, fetchMe, clearAuth,
-    verifyTwoFactor, cancelTwoFactor, syncAccessToken,
+    verifyTwoFactor, cancelTwoFactor, syncAccessToken, setToken,
   };
 });

@@ -35,7 +35,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: apps/backend/package-lock.json
 
@@ -75,21 +75,19 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: |
             apps/backend/package-lock.json
             apps/frontend/package-lock.json
 
       - name: Audit backend
-        run: npm ci && npm audit --audit-level=high
+        run: npm ci && npm audit --audit-level=critical
         working-directory: apps/backend
-        continue-on-error: true
 
       - name: Audit frontend
-        run: npm ci && npm audit --audit-level=high
+        run: npm ci && npm audit --audit-level=critical
         working-directory: apps/frontend
-        continue-on-error: true
 
   # ── Build + Push Docker ───────────────────────────────────────
   build:
@@ -111,7 +109,7 @@ jobs:
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Build & push backend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: apps/backend
           target: production
@@ -124,7 +122,7 @@ jobs:
             bamara3/backend-app:${{ github.sha }}
 
       - name: Build & push frontend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: apps/frontend
           target: production
@@ -150,7 +148,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install kubectl
-        uses: azure/setup-kubectl@v3
+        uses: azure/setup-kubectl@v4
         with:
           version: 'v1.28.0'
 

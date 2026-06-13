@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException, Logger, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { INoteRepository, NOTE_REPOSITORY } from '../../domain/repositories/note.repository.interface';
@@ -13,6 +13,7 @@ import { NotificationsService } from '../../../notifications/application/service
 import { CreateNoteDto } from '../dto/create-note.dto';
 import { UpdateNoteDto } from '../dto/update-note.dto';
 import { QueryNotesDto } from '../dto/query-notes.dto';
+import { NotesGateway } from '../../infrastructure/gateways/notes.gateway';
 
 const VERSION_THROTTLE_SECONDS = 60;
 
@@ -30,7 +31,8 @@ export class NotesService {
     @InjectRepository(Tag) private readonly tagRepository: Repository<Tag>,
     @InjectRepository(Folder) private readonly folderRepository: Repository<Folder>,
     private readonly aiService: AiService,
-    private readonly notifications: NotificationsService,
+    private readonly notificationsService: NotificationsService,
+    @Inject(forwardRef(() => NotesGateway)) private readonly notesGateway: NotesGateway,
   ) {}
 
   findAll(userId: string, query: QueryNotesDto) {
@@ -47,8 +49,22 @@ export class NotesService {
   }
 
   async searchSemantic(userId: string, q: string) {
-    const embedding = await this.aiService.generateEmbedding(q);
-    return this.noteRepository.searchSemantic(userId, JSON.stringify(embedding));
+    try {
+      const key = process.env.OPENAI_API_KEY;
+      if (!key || key === 'sk-proj-...' || key.includes('...')) {
+        throw new Error('OpenAI API key is missing or is a placeholder.');
+      }
+      const embedding = await this.aiService.generateEmbedding(q);
+      const results = await this.noteRepository.searchSemantic(userId, JSON.stringify(embedding));
+      if (results.length === 0) {
+        this.logger.log(`No semantic results found. Falling back to keyword search for "${q}".`);
+        return this.noteRepository.search(userId, q);
+      }
+      return results;
+    } catch (error: any) {
+      this.logger.warn(`Semantic search failed (${error.message}). Falling back to keyword search.`);
+      return this.noteRepository.search(userId, q);
+    }
   }
 
   async findOne(userId: string, id: string): Promise<NoteWithPermission> {
@@ -107,6 +123,26 @@ export class NotesService {
     return note;
   }
 
+  async duplicate(userId: string, id: string): Promise<Note> {
+    const original = await this.findOne(userId, id);
+    const duplicated = await this.noteRepository.save({
+      userId,
+      title: original.title ? `${original.title} (Copy)` : 'Copy',
+      content: original.content,
+      folderId: original.folderId,
+      tags: [],
+    });
+
+    if (original.tags && original.tags.length > 0) {
+      for (const tag of original.tags) {
+        await this.noteRepository.addTag(duplicated.id, tag.id);
+      }
+    }
+
+    this.scheduleEmbedding(duplicated.id, duplicated.title, duplicated.content);
+    return this.findOne(userId, duplicated.id);
+  }
+
   async update(userId: string, id: string, dto: UpdateNoteDto) {
     let existing = await this.noteRepository.findById(userId, id);
     let ownerId = userId;
@@ -143,6 +179,28 @@ export class NotesService {
     const updated = await this.noteRepository.findById(ownerId, id);
     if (contentChanged && updated) {
       this.scheduleEmbedding(id, updated.title, updated.content);
+      try {
+        const editorUser = await this.userRepository.findOne({ where: { id: userId } });
+        const editorName = editorUser
+          ? `${editorUser.firstName ?? ''} ${editorUser.lastName ?? ''}`.trim() || 'Un utilisateur'
+          : 'Un utilisateur';
+        const message = `${editorName} a mis à jour la note "${updated.title || 'Sans titre'}".`;
+        
+        if (updated.userId !== userId) {
+          const notification = await this.notificationsService.create(updated.userId, 'EDIT', message, { noteId: id });
+          this.notesGateway.sendNotification(updated.userId, notification);
+        }
+        
+        const shares = await this.shareRepository.find({ where: { noteId: id } });
+        for (const share of shares) {
+          if (share.sharedWithId !== userId) {
+            const notification = await this.notificationsService.create(share.sharedWithId, 'EDIT', message, { noteId: id });
+            this.notesGateway.sendNotification(share.sharedWithId, notification);
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`Failed to send edit notification: ${err.message}`);
+      }
     }
     return updated;
   }
@@ -151,6 +209,31 @@ export class NotesService {
     const note = await this.noteRepository.findById(userId, id);
     if (!note) throw new NotFoundException('Note not found');
     await this.noteRepository.softDelete(userId, id);
+  }
+
+  findDeleted(userId: string) {
+    return this.noteRepository.findDeleted(userId);
+  }
+
+  async restoreNote(userId: string, id: string) {
+    const deleted = await this.noteRepository.findDeleted(userId);
+    const note = deleted.find(n => n.id === id);
+    if (!note) throw new NotFoundException('Note not found in trash');
+    await this.noteRepository.restore(userId, id);
+  }
+
+  async permanentDelete(userId: string, id: string) {
+    const deleted = await this.noteRepository.findDeleted(userId);
+    const note = deleted.find(n => n.id === id);
+    if (!note) throw new NotFoundException('Note not found in trash');
+    await this.noteRepository.permanentDelete(userId, id);
+  }
+
+  async emptyTrash(userId: string) {
+    const deleted = await this.noteRepository.findDeleted(userId);
+    for (const note of deleted) {
+      await this.noteRepository.permanentDelete(userId, note.id);
+    }
   }
 
   async addTag(userId: string, noteId: string, tagId: string) {
@@ -222,9 +305,20 @@ export class NotesService {
       { noteId, sharedWithId: targetUser.id, permission },
       { conflictPaths: ['noteId', 'sharedWithId'] },
     );
+    try {
+      const owner = await this.userRepository.findOne({ where: { id: ownerId } });
+      const ownerName = owner
+        ? `${owner.firstName ?? ''} ${owner.lastName ?? ''}`.trim() || 'Un utilisateur'
+        : 'Un utilisateur';
+      const message = `${ownerName} a partagé la note "${note.title || 'Sans titre'}" avec vous.`;
+      const notification = await this.notificationsService.create(targetUser.id, 'SHARE', message, { noteId });
+      this.notesGateway.sendNotification(targetUser.id, notification);
+    } catch (err: any) {
+      this.logger.warn(`Failed to send share notification: ${err.message}`);
+    }
 
-    // Best-effort push to the recipient. Never block or fail the share.
-    await this.notifications
+    // Best-effort FCM push to the recipient's mobile devices. Never block or fail the share.
+    await this.notificationsService
       .sendToUser(targetUser.id, {
         title: 'New shared note',
         body: `Someone shared "${note.title || 'a note'}" with you`,

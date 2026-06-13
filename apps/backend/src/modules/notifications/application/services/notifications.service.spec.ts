@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotificationsService } from './notifications.service';
 import { DeviceToken } from '../../domain/entities/device-token.entity';
+import { Notification } from '../../domain/entities/notification.entity';
 
 const mockRepo = () => ({
   findOne: jest.fn(),
@@ -24,6 +25,7 @@ describe('NotificationsService', () => {
       providers: [
         NotificationsService,
         { provide: getRepositoryToken(DeviceToken), useValue: mockRepo() },
+        { provide: getRepositoryToken(Notification), useValue: mockRepo() },
       ],
     }).compile();
 

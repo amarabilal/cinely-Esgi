@@ -47,6 +47,18 @@ export class User {
   @Column({ name: 'email_verification_expires_at', type: 'timestamp', nullable: true })
   emailVerificationExpiresAt: Date | null;
 
+  @Column({ name: 'google_access_token', nullable: true, type: 'varchar' })
+  googleAccessToken: string | null;
+
+  @Column({ name: 'google_refresh_token', nullable: true, type: 'varchar' })
+  googleRefreshToken: string | null;
+
+  @Column({ name: 'google_token_expires_at', type: 'timestamp', nullable: true })
+  googleTokenExpiresAt: Date | null;
+
+  @Column({ name: 'google_email', nullable: true, type: 'varchar' })
+  googleEmail: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

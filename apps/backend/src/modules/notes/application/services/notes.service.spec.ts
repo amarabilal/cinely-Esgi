@@ -10,6 +10,7 @@ import { NoteShare } from '../../domain/entities/note-share.entity';
 import { User } from '../../../auth/domain/entities/user.entity';
 import { Tag } from '../../../tags/domain/entities/tag.entity';
 import { Folder } from '../../../folders/domain/entities/folder.entity';
+import { NotesGateway } from '../../infrastructure/gateways/notes.gateway';
 
 const makeNote = (overrides = {}) => ({
   id: 'note-1',
@@ -30,11 +31,14 @@ const mockNoteRepo = () => ({
   findAll: jest.fn(),
   findById: jest.fn(),
   search: jest.fn(),
-  searchSemantic: jest.fn(),
+  searchSemantic: jest.fn().mockResolvedValue([]),
   save: jest.fn(),
   update: jest.fn(),
   updateEmbedding: jest.fn().mockResolvedValue(undefined),
   softDelete: jest.fn(),
+  findDeleted: jest.fn().mockResolvedValue([]),
+  restore: jest.fn().mockResolvedValue(undefined),
+  permanentDelete: jest.fn().mockResolvedValue(undefined),
   addTag: jest.fn(),
   removeTag: jest.fn(),
 });
@@ -83,7 +87,16 @@ describe('NotesService', () => {
         },
         {
           provide: NotificationsService,
-          useValue: { sendToUser: jest.fn().mockResolvedValue(undefined) },
+          useValue: {
+            create: jest.fn().mockResolvedValue({}),
+            sendToUser: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: NotesGateway,
+          useValue: {
+            sendNotification: jest.fn(),
+          },
         },
       ],
     }).compile();

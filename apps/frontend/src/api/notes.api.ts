@@ -7,10 +7,12 @@ export interface Note {
   content: string;
   isFavorite: boolean;
   isArchived: boolean;
+  isPinned: boolean;
   folderId: string | null;
   tags: Tag[];
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string | null;
   sharedPermission?: 'READ' | 'WRITE'; // present when note is shared with current user
 }
 
@@ -46,6 +48,7 @@ export const notesApi = {
   findOne: (id: string) => client.get<Note>(`/notes/${id}`),
   create: (payload: { title?: string; content?: string; folderId?: string }) =>
     client.post<Note>('/notes', payload),
+  duplicateNote: (id: string) => client.post<Note>(`/notes/${id}/duplicate`),
   update: (id: string, payload: Partial<Pick<Note, 'title' | 'content' | 'folderId' | 'isFavorite' | 'isArchived'>>) =>
     client.put<Note>(`/notes/${id}`, payload),
   remove: (id: string) => client.delete(`/notes/${id}`),
@@ -59,4 +62,9 @@ export const notesApi = {
   getVersions: (id: string) => client.get<NoteVersion[]>(`/notes/${id}/versions`),
   restoreVersion: (noteId: string, versionId: string) =>
     client.post<Note>(`/notes/${noteId}/versions/${versionId}/restore`),
+  togglePin: (id: string) => client.patch<Note>(`/notes/${id}/pin`),
+  findTrash: () => client.get<Note[]>('/notes/trash'),
+  restoreNote: (id: string) => client.patch(`/notes/${id}/restore`),
+  permanentDelete: (id: string) => client.delete(`/notes/${id}/permanent`),
+  emptyTrash: () => client.delete('/notes/trash'),
 };

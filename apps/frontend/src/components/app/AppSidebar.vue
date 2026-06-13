@@ -18,10 +18,13 @@ import {
   Tags,
   Trash2,
   Users,
+  Calendar,
+  Brain,
 } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import { Button } from '@/components/ui/button';
 import TagManager from '@/components/notes/TagManager.vue';
+import NoteTemplateModal from '@/components/notes/NoteTemplateModal.vue';
 import { useNotesStore } from '@/stores/notes.store';
 
 const props = withDefaults(defineProps<{
@@ -47,6 +50,7 @@ const creatingFolder = ref(false);
 const dragOverFolderId = ref<string | null>(null);
 
 const tagManagerOpen = ref(false);
+const templateModalOpen = ref(false);
 
 // Per-folder inline action state.
 const renamingFolderId = ref<string | null>(null);
@@ -110,6 +114,21 @@ function goArchived() {
 function goDashboard() {
   emit('close');
   void router.push('/dashboard');
+}
+
+function goCalendar() {
+  emit('close');
+  void router.push('/calendar');
+}
+
+function goTrash() {
+  emit('close');
+  void router.push('/trash');
+}
+
+function goNotebooks() {
+  emit('close');
+  void router.push('/notebooks');
 }
 
 function goSearch() {
@@ -301,6 +320,28 @@ function handleTagDragStart(event: DragEvent, tag: { id: string; name: string })
           </button>
           <button
             type="button"
+            :class="navItemClass(route.path === '/calendar')"
+            title="Calendar"
+            @click="goCalendar"
+          >
+            <span class="flex min-w-0 items-center gap-2">
+              <Calendar class="size-4" />
+              <span v-if="!isCollapsed" class="truncate">Calendar</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            :class="navItemClass(route.path.startsWith('/notebooks'))"
+            title="Deep Research"
+            @click="goNotebooks"
+          >
+            <span class="flex min-w-0 items-center gap-2">
+              <Brain class="size-4 text-primary" />
+              <span v-if="!isCollapsed" class="truncate font-semibold text-primary">Deep Research</span>
+            </span>
+          </button>
+          <button
+            type="button"
             :class="navItemClass(isAllNotes)"
             title="All notes"
             @click="goAllNotes"
@@ -352,6 +393,17 @@ function handleTagDragStart(event: DragEvent, tag: { id: string; name: string })
             <span class="flex min-w-0 items-center gap-2">
               <Archive class="size-4" />
               <span v-if="!isCollapsed" class="truncate">Archived</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            :class="navItemClass(route.path === '/trash')"
+            title="Trash"
+            @click="goTrash"
+          >
+            <span class="flex min-w-0 items-center gap-2">
+              <Trash2 class="size-4" />
+              <span v-if="!isCollapsed" class="truncate">Trash</span>
             </span>
           </button>
         </section>
@@ -553,7 +605,7 @@ function handleTagDragStart(event: DragEvent, tag: { id: string; name: string })
         :size="isCollapsed ? 'icon' : 'sm'"
         variant="secondary"
         title="New note"
-        @click="emit('newNote'); emit('close')"
+        @click="templateModalOpen = true; emit('close')"
       >
         <Plus class="size-4" />
         <span v-if="!isCollapsed">New note</span>
@@ -571,5 +623,6 @@ function handleTagDragStart(event: DragEvent, tag: { id: string; name: string })
     </div>
 
     <TagManager v-model:open="tagManagerOpen" />
+    <NoteTemplateModal v-model:open="templateModalOpen" />
   </aside>
 </template>

@@ -39,3 +39,6 @@ Thumbs.db
 # Dev-only scripts — never commit
 seed.js
 setup-git-history.sh
+
+# Google OAuth Secrets
+client_secret_*.json

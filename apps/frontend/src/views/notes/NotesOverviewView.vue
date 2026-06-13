@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/EmptyState.vue';
 import NoteCard from '@/components/notes/NoteCard.vue';
 import MobileFilterSheet from '@/components/app/MobileFilterSheet.vue';
+import NoteTemplateModal from '@/components/notes/NoteTemplateModal.vue';
 import { useNotesStore } from '@/stores/notes.store';
 import type { Note, NoteQuery } from '@/api/notes.api';
 
@@ -16,6 +17,7 @@ const route = useRoute();
 const store = useNotesStore();
 
 const statFilter = ref<OverviewFilter>('all');
+const templateModalOpen = ref(false);
 
 // Whether the current route targets shared-with-me notes.
 const isShared = computed(() => route.query.filter === 'shared');
@@ -105,11 +107,6 @@ function openNote(note: Note) {
   router.push(`/notes/${note.id}`);
 }
 
-async function newNote() {
-  const n = await store.createNote();
-  router.push(`/notes/${n.id}`);
-}
-
 // ---- Mobile-only filter affordances (md:hidden) ----
 const filterSheetOpen = ref(false);
 
@@ -175,7 +172,7 @@ function goArchived() {
           {{ displayedNotes.length }} note{{ displayedNotes.length === 1 ? '' : 's' }}
         </p>
       </div>
-      <Button class="hidden md:inline-flex" @click="newNote">
+      <Button class="hidden md:inline-flex" @click="templateModalOpen = true">
         <Plus class="size-4" />
         New note
       </Button>
@@ -187,7 +184,7 @@ function goArchived() {
         title="No notes yet"
         description="Create your first note to get started."
       >
-        <Button @click="newNote">
+        <Button @click="templateModalOpen = true">
           <Plus class="size-4" />
           New note
         </Button>
@@ -233,5 +230,6 @@ function goArchived() {
     </template>
 
     <MobileFilterSheet v-model:open="filterSheetOpen" />
+    <NoteTemplateModal v-model:open="templateModalOpen" />
   </div>
 </template>
