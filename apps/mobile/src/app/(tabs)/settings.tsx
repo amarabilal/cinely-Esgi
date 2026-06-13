@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { AxiosError } from 'axios';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,8 +19,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Palette } from '@/constants/theme';
 import { api } from '@/lib/api';
+import {
+  connectGoogle,
+  disconnectGoogle,
+  getGoogleStatus,
+} from '@/lib/google';
 import { registerForPush, type PushResult } from '@/lib/push';
-import type { User } from '@/lib/types';
+import type { GoogleStatus, User } from '@/lib/types';
 import { useAuthStore } from '@/stores/auth';
 
 /** GET /settings/profile shape (includes the 2FA flag /auth/me omits). */
@@ -59,11 +65,17 @@ const PASSWORD_HINT =
   'At least 12 characters, including letters, digits and symbols.';
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const setUser = useAuthStore((s) => s.setUser);
 
   const [loggingOut, setLoggingOut] = useState(false);
+
+  // --- Google integration state ---
+  const [google, setGoogle] = useState<GoogleStatus>({ connected: false });
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
 
   // --- Profile edit state ---
   const [editing, setEditing] = useState(false);
@@ -112,6 +124,55 @@ export default function SettingsScreen() {
       active = false;
     };
   }, []);
+
+  // Load Google connection status on mount.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const status = await getGoogleStatus();
+        if (active) setGoogle(status);
+      } catch {
+        // leave disconnected
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function handleConnectGoogle() {
+    if (googleBusy) return;
+    setGoogleBusy(true);
+    setGoogleError(null);
+    try {
+      const result = await connectGoogle();
+      if (result.status === 'success') {
+        setGoogle(await getGoogleStatus());
+      } else if (result.status === 'error') {
+        setGoogleError(result.message);
+      }
+      // 'cancelled' -> silently do nothing
+    } catch {
+      setGoogleError('Could not connect Google.');
+    } finally {
+      setGoogleBusy(false);
+    }
+  }
+
+  async function handleDisconnectGoogle() {
+    if (googleBusy) return;
+    setGoogleBusy(true);
+    setGoogleError(null);
+    try {
+      await disconnectGoogle();
+      setGoogle({ connected: false });
+    } catch {
+      setGoogleError('Could not disconnect Google.');
+    } finally {
+      setGoogleBusy(false);
+    }
+  }
 
   async function handleLogout() {
     if (loggingOut) return;
@@ -677,6 +738,69 @@ export default function SettingsScreen() {
             ) : null}
           </View>
 
+          {/* Google integration */}
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Google</Text>
+              <View
+                style={[
+                  styles.badge,
+                  google.connected ? styles.badgeOk : styles.badgeWarn,
+                ]}>
+                <Text
+                  style={[
+                    styles.badgeText,
+                    google.connected ? styles.badgeTextOk : styles.badgeTextWarn,
+                  ]}>
+                  {google.connected ? 'Connected' : 'Not connected'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.hint}>
+              {google.connected
+                ? `Connected as ${google.email ?? 'your Google account'}. Export notes to Drive, sync to Calendar, and send via Gmail.`
+                : 'Connect your Google account to export notes to Drive, sync to Calendar, and send via Gmail.'}
+            </Text>
+            {googleError ? <Text style={styles.error}>{googleError}</Text> : null}
+
+            {google.connected ? (
+              <View style={styles.googleActions}>
+                <TouchableOpacity
+                  style={[styles.fullButton, styles.buttonSecondary]}
+                  onPress={() => router.push('/calendar')}
+                  activeOpacity={0.85}>
+                  <Text style={styles.buttonSecondaryText}>Open Calendar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.fullButton, styles.buttonDestructive]}
+                  onPress={handleDisconnectGoogle}
+                  disabled={googleBusy}
+                  activeOpacity={0.85}>
+                  {googleBusy ? (
+                    <ActivityIndicator color={Palette.destructive} />
+                  ) : (
+                    <Text style={styles.buttonDestructiveText}>Disconnect</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.fullButton, styles.buttonPrimary, styles.googleConnect]}
+                onPress={handleConnectGoogle}
+                disabled={googleBusy}
+                activeOpacity={0.85}>
+                {googleBusy ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <>
+                    <Ionicons name="logo-google" size={16} color="#ffffff" />
+                    <Text style={styles.buttonPrimaryText}>Connect Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
           {/* Log out */}
           <TouchableOpacity
             style={styles.logoutButton}
@@ -838,6 +962,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   pushSpinner: { marginTop: 10, alignSelf: 'flex-start' },
+  googleActions: { gap: 10, marginTop: 14 },
+  googleConnect: { flexDirection: 'row', gap: 8, marginTop: 14 },
 
   badge: {
     flexDirection: 'row',
