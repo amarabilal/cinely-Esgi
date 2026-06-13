@@ -22,8 +22,10 @@ import {
 } from 'react-native-pell-rich-editor';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ActionSheet, type ActionItem } from '@/components/action-sheet';
 import { ShareModal } from '@/components/share-modal';
 import { Palette } from '@/constants/theme';
+import { suggestTitle, summarizeContent, suggestTags } from '@/lib/ai';
 import { api } from '@/lib/api';
 import { stripHtml } from '@/lib/format';
 import {
@@ -149,6 +151,15 @@ export default function NoteScreen() {
   const [tagsLoading, setTagsLoading] = useState(false);
   // Google integration (per-note export actions).
   const [googleConnected, setGoogleConnected] = useState(false);
+  // "More" actions bottom sheet.
+  const [menuVisible, setMenuVisible] = useState(false);
+  // AI assistant (suggest title / summarize / suggest tags).
+  const [aiMenuVisible, setAiMenuVisible] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [summaryVisible, setSummaryVisible] = useState(false);
+  const [summaryText, setSummaryText] = useState('');
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [suggestVisible, setSuggestVisible] = useState(false);
   // Email-note modal.
   const [emailVisible, setEmailVisible] = useState(false);
   const [emailTo, setEmailTo] = useState('');
@@ -607,41 +618,147 @@ export default function NoteScreen() {
     }
   }, [emailTo, emailSubject]);
 
-  /** Consolidated "more" action sheet: organize + Google export actions. */
-  const openMoreMenu = useCallback(() => {
-    const options: { text: string; style?: 'destructive' | 'cancel'; onPress?: () => void }[] = [];
+  /** Consolidated "more" actions: organize + Google export, shown in a styled sheet. */
+  const moreActions = useMemo<ActionItem[]>(() => {
+    const items: ActionItem[] = [];
     if (isOwner) {
-      options.push({ text: isPinned ? 'Unpin' : 'Pin', onPress: () => void handlePin() });
+      items.push({
+        label: isPinned ? 'Unpin' : 'Pin',
+        icon: isPinned ? 'pin' : 'pin-outline',
+        onPress: () => void handlePin(),
+      });
     }
-    options.push({
-      text: 'Archive',
+    items.push({
+      label: 'Archive',
+      icon: 'archive-outline',
       onPress: () => void handleArchive(),
     });
     if (googleConnected) {
-      options.push({ text: 'Export to Google Drive', onPress: () => void handleExportDrive() });
-      options.push({ text: 'Add to Google Calendar', onPress: () => void handleSyncCalendar() });
-      options.push({
-        text: 'Email this note',
+      items.push({
+        label: 'Export to Google Drive',
+        icon: 'cloud-upload-outline',
+        onPress: () => void handleExportDrive(),
+      });
+      items.push({
+        label: 'Add to Google Calendar',
+        icon: 'calendar-outline',
+        onPress: () => void handleSyncCalendar(),
+      });
+      items.push({
+        label: 'Email this note',
+        icon: 'mail-outline',
         onPress: () => {
           setEmailSubject(titleRef.current || 'Note');
           setEmailVisible(true);
         },
       });
     }
-    options.push({ text: 'Delete', style: 'destructive', onPress: () => handleDelete() });
-    options.push({ text: 'Cancel', style: 'cancel' });
-    Alert.alert(title?.trim() || 'Note', undefined, options);
+    items.push({
+      label: 'Delete',
+      icon: 'trash-outline',
+      destructive: true,
+      onPress: () => handleDelete(),
+    });
+    return items;
   }, [
     isOwner,
     isPinned,
     googleConnected,
-    title,
     handlePin,
     handleArchive,
     handleDelete,
     handleExportDrive,
     handleSyncCalendar,
   ]);
+
+  // --- AI assistant ----------------------------------------------------------
+  const hasContent = () => stripHtml(contentRef.current ?? '').trim().length > 0;
+
+  const doSuggestTitle = useCallback(async () => {
+    if (!hasContent()) {
+      Alert.alert('Nothing to work with', 'Write some content first.');
+      return;
+    }
+    setAiBusy(true);
+    try {
+      const t = await suggestTitle(contentRef.current);
+      if (t) {
+        setTitle(t);
+        titleRef.current = t;
+        scheduleSave();
+        broadcastRealtime();
+      }
+    } catch {
+      Alert.alert('Could not suggest a title', 'Please try again.');
+    } finally {
+      setAiBusy(false);
+    }
+  }, [scheduleSave, broadcastRealtime]);
+
+  const doSummarize = useCallback(async () => {
+    if (!hasContent()) {
+      Alert.alert('Nothing to summarize', 'Write some content first.');
+      return;
+    }
+    setAiBusy(true);
+    try {
+      const s = await summarizeContent(contentRef.current);
+      setSummaryText(s || 'No summary was generated.');
+      setSummaryVisible(true);
+    } catch {
+      Alert.alert('Could not summarize', 'Please try again.');
+    } finally {
+      setAiBusy(false);
+    }
+  }, []);
+
+  const doSuggestTags = useCallback(async () => {
+    if (!hasContent()) {
+      Alert.alert('Nothing to work with', 'Write some content first.');
+      return;
+    }
+    setAiBusy(true);
+    try {
+      const existing = tags.map((t) => t.name);
+      const sugg = await suggestTags(contentRef.current, existing);
+      setSuggestedTags(sugg);
+      setSuggestVisible(true);
+    } catch {
+      Alert.alert('Could not suggest tags', 'Please try again.');
+    } finally {
+      setAiBusy(false);
+    }
+  }, [tags]);
+
+  /** Create (or reuse) a tag for a suggested name and attach it to the note. */
+  const addSuggestedTag = useCallback(
+    async (name: string) => {
+      try {
+        const { data: all } = await api.get<Tag[]>('/tags');
+        let tag = all.find((t) => t.name.toLowerCase() === name.toLowerCase());
+        if (!tag) {
+          const color = TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
+          const { data: created } = await api.post<Tag>('/tags', { name, color });
+          tag = created;
+        }
+        setAllTags((prev) => (prev.some((t) => t.id === tag!.id) ? prev : [...prev, tag!]));
+        await handleAttachTag(tag);
+        setSuggestedTags((prev) => prev.filter((t) => t !== name));
+      } catch {
+        Alert.alert('Could not add tag', 'Please try again.');
+      }
+    },
+    [handleAttachTag],
+  );
+
+  const aiActions = useMemo<ActionItem[]>(
+    () => [
+      { label: 'Suggest a title', icon: 'sparkles-outline', onPress: () => void doSuggestTitle() },
+      { label: 'Summarize note', icon: 'document-text-outline', onPress: () => void doSummarize() },
+      { label: 'Suggest tags', icon: 'pricetags-outline', onPress: () => void doSuggestTags() },
+    ],
+    [doSuggestTitle, doSummarize, doSuggestTags],
+  );
 
   // --- Render ----------------------------------------------------------------
   if (loading) {
@@ -763,9 +880,24 @@ export default function NoteScreen() {
               </TouchableOpacity>
             ) : null}
 
+            {canEdit ? (
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => setAiMenuVisible(true)}
+                disabled={aiBusy}
+                activeOpacity={0.7}
+                accessibilityLabel="AI assistant">
+                {aiBusy ? (
+                  <ActivityIndicator size="small" color={Palette.primary} />
+                ) : (
+                  <Ionicons name="sparkles" size={20} color={Palette.primary} />
+                )}
+              </TouchableOpacity>
+            ) : null}
+
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={openMoreMenu}
+              onPress={() => setMenuVisible(true)}
               activeOpacity={0.7}
               accessibilityLabel="More actions">
               <Ionicons name="ellipsis-horizontal" size={22} color={Palette.foreground} />
@@ -864,6 +996,102 @@ export default function NoteScreen() {
           useContainer
         />
       </KeyboardAvoidingView>
+
+      {/* More actions (styled bottom sheet) */}
+      <ActionSheet
+        visible={menuVisible}
+        title={title?.trim() || 'Note'}
+        actions={moreActions}
+        onClose={() => setMenuVisible(false)}
+      />
+
+      {/* AI assistant (styled bottom sheet) */}
+      <ActionSheet
+        visible={aiMenuVisible}
+        title="AI assistant"
+        actions={aiActions}
+        onClose={() => setAiMenuVisible(false)}
+      />
+
+      {/* AI summary */}
+      <Modal
+        visible={summaryVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSummaryVisible(false)}>
+        <Pressable style={styles.tagBackdrop} onPress={() => setSummaryVisible(false)} />
+        <View style={styles.tagSheetWrap} pointerEvents="box-none">
+          <View
+            style={[
+              styles.tagSheet,
+              { paddingBottom: sheetLayout.paddingBottom, maxHeight: sheetLayout.maxHeight(0.7) },
+            ]}>
+            <View style={styles.tagGrabber} />
+            <View style={styles.tagSheetHeader}>
+              <Text style={styles.tagSheetTitle}>Summary</Text>
+              <TouchableOpacity
+                onPress={() => setSummaryVisible(false)}
+                hitSlop={10}
+                activeOpacity={0.7}
+                accessibilityLabel="Close summary">
+                <Ionicons name="close" size={24} color={Palette.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.summaryText}>{summaryText}</Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* AI suggested tags */}
+      <Modal
+        visible={suggestVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSuggestVisible(false)}>
+        <Pressable style={styles.tagBackdrop} onPress={() => setSuggestVisible(false)} />
+        <View style={styles.tagSheetWrap} pointerEvents="box-none">
+          <View
+            style={[
+              styles.tagSheet,
+              { paddingBottom: sheetLayout.paddingBottom, maxHeight: sheetLayout.maxHeight(0.6) },
+            ]}>
+            <View style={styles.tagGrabber} />
+            <View style={styles.tagSheetHeader}>
+              <Text style={styles.tagSheetTitle}>Suggested tags</Text>
+              <TouchableOpacity
+                onPress={() => setSuggestVisible(false)}
+                hitSlop={10}
+                activeOpacity={0.7}
+                accessibilityLabel="Close suggestions">
+                <Ionicons name="close" size={24} color={Palette.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            {suggestedTags.length === 0 ? (
+              <Text style={styles.tagSheetEmpty}>No suggestions for this note.</Text>
+            ) : (
+              <>
+                <Text style={styles.suggHint}>Tap a tag to add it to this note.</Text>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View style={styles.suggWrap}>
+                    {suggestedTags.map((name) => (
+                      <TouchableOpacity
+                        key={name}
+                        style={styles.suggChip}
+                        activeOpacity={0.7}
+                        onPress={() => addSuggestedTag(name)}>
+                        <Ionicons name="add" size={15} color={Palette.primary} />
+                        <Text style={styles.suggChipText}>{name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Share modal (owner only) */}
       {isOwner ? (
@@ -1293,4 +1521,25 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.primary,
   },
   emailSendText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+
+  // AI summary + suggested tags
+  summaryText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: Palette.foreground,
+    paddingBottom: 8,
+  },
+  suggHint: { fontSize: 13, color: Palette.mutedForeground, marginBottom: 10 },
+  suggWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  suggChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Palette.primary,
+  },
+  suggChipText: { fontSize: 14, fontWeight: '600', color: Palette.primary },
 });
