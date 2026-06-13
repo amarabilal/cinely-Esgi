@@ -181,7 +181,9 @@ export class NotesService {
       this.scheduleEmbedding(id, updated.title, updated.content);
       try {
         const editorUser = await this.userRepository.findOne({ where: { id: userId } });
-        const editorName = editorUser ? `${editorUser.firstName} ${editorUser.lastName}` : 'Un utilisateur';
+        const editorName = editorUser
+          ? `${editorUser.firstName ?? ''} ${editorUser.lastName ?? ''}`.trim() || 'Un utilisateur'
+          : 'Un utilisateur';
         const message = `${editorName} a mis à jour la note "${updated.title || 'Sans titre'}".`;
         
         if (updated.userId !== userId) {
@@ -305,7 +307,9 @@ export class NotesService {
     );
     try {
       const owner = await this.userRepository.findOne({ where: { id: ownerId } });
-      const ownerName = owner ? `${owner.firstName} ${owner.lastName}` : 'Un utilisateur';
+      const ownerName = owner
+        ? `${owner.firstName ?? ''} ${owner.lastName ?? ''}`.trim() || 'Un utilisateur'
+        : 'Un utilisateur';
       const message = `${ownerName} a partagé la note "${note.title || 'Sans titre'}" avec vous.`;
       const notification = await this.notificationsService.create(targetUser.id, 'SHARE', message, { noteId });
       this.notesGateway.sendNotification(targetUser.id, notification);
