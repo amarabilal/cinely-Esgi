@@ -43,25 +43,50 @@ const REALTIME_DELAY = 400;
 
 type SaveState = 'idle' | 'saving' | 'saved';
 
-/** Toolbar actions, in the order they appear above the keyboard. */
+/**
+ * A non-format pseudo-action used to draw a vertical divider between toolbar
+ * groups. Pressing it is a no-op (pell's `_onPress` default case calls
+ * `props['sep']?.()`, which is undefined). The key can repeat — the toolbar's
+ * keyExtractor disambiguates by index.
+ */
+const SEP = 'sep';
+
+/**
+ * Toolbar actions, grouped by kind. `SEP` markers render a divider so related
+ * controls read as one cluster: inline styles · headings · lists · blocks ·
+ * history.
+ */
 const TOOLBAR_ACTIONS = [
+  // Inline styles
   actions.setBold,
   actions.setItalic,
   actions.setUnderline,
   actions.setStrikethrough,
+  SEP,
+  // Headings
   actions.heading1,
   actions.heading2,
+  actions.heading3,
+  SEP,
+  // Lists
   actions.insertBulletsList,
   actions.insertOrderedList,
   actions.checkboxList,
+  SEP,
+  // Blocks & links
   actions.blockquote,
   actions.code,
   actions.insertLink,
+  SEP,
+  // History
   actions.undo,
   actions.redo,
 ];
 
-/** Map H1/H2 actions to text labels (pell has no default icon for these). */
+/**
+ * Custom renderers for actions pell has no icon for: H1/H2/H3 text labels and
+ * the group divider.
+ */
 const toolbarIconMap = {
   [actions.heading1]: ({ tintColor }: { tintColor: string }) => (
     <Text style={[styles.toolbarLabel, { color: tintColor }]}>H1</Text>
@@ -69,7 +94,23 @@ const toolbarIconMap = {
   [actions.heading2]: ({ tintColor }: { tintColor: string }) => (
     <Text style={[styles.toolbarLabel, { color: tintColor }]}>H2</Text>
   ),
+  [actions.heading3]: ({ tintColor }: { tintColor: string }) => (
+    <Text style={[styles.toolbarLabel, { color: tintColor }]}>H3</Text>
+  ),
+  [SEP]: () => <View style={styles.toolbarDivider} />,
 };
+
+/** Preset colors offered when creating a tag (mirrors the filter sheet). */
+const TAG_COLORS = [
+  '#ef4444',
+  '#f97316',
+  '#eab308',
+  '#22c55e',
+  '#06b6d4',
+  '#3b82f6',
+  '#8b5cf6',
+  '#ec4899',
+];
 
 export default function NoteScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -88,6 +129,10 @@ export default function NoteScreen() {
   const [tagPickerVisible, setTagPickerVisible] = useState(false);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
+  // New-tag creation (from inside this note's tag picker).
+  const [newTag, setNewTag] = useState('');
+  const [newTagColor, setNewTagColor] = useState(TAG_COLORS[5]);
+  const [creatingTag, setCreatingTag] = useState(false);
   /** Other users currently viewing/editing this note (realtime presence). */
   const [presence, setPresence] = useState<Presence[]>([]);
 
@@ -445,6 +490,27 @@ export default function NoteScreen() {
     [id, tags],
   );
 
+  /** Create a brand-new tag and attach it to this note in one step. */
+  const handleCreateTag = useCallback(async () => {
+    const name = newTag.trim();
+    if (!name || creatingTag) return;
+    setCreatingTag(true);
+    try {
+      const { data: created } = await api.post<Tag>('/tags', {
+        name,
+        color: newTagColor,
+      });
+      setAllTags((prev) => [...prev, created]);
+      setNewTag('');
+      // Attach to the current note (also closes the picker).
+      await handleAttachTag(created);
+    } catch {
+      Alert.alert('Could not create tag', 'Please try again.');
+    } finally {
+      setCreatingTag(false);
+    }
+  }, [newTag, newTagColor, creatingTag, handleAttachTag]);
+
   const availableTags = useMemo(
     () => allTags.filter((t) => !tags.some((nt) => nt.id === t.id)),
     [allTags, tags],
@@ -624,6 +690,19 @@ export default function NoteScreen() {
           ) : null}
         </ScrollView>
 
+        {/* Format toolbar — sits above the editor, grouped by kind */}
+        {!readOnly ? (
+          <RichToolbar
+            editor={richText}
+            actions={TOOLBAR_ACTIONS}
+            iconMap={toolbarIconMap}
+            style={styles.toolbar}
+            iconTint={Palette.foreground}
+            selectedIconTint={Palette.primary}
+            disabledIconTint={Palette.mutedForeground}
+          />
+        ) : null}
+
         {/* Editor */}
         <RichEditor
           ref={richText}
@@ -641,19 +720,6 @@ export default function NoteScreen() {
           }}
           useContainer
         />
-
-        {/* Toolbar (hidden when read-only) */}
-        {!readOnly ? (
-          <RichToolbar
-            editor={richText}
-            actions={TOOLBAR_ACTIONS}
-            iconMap={toolbarIconMap}
-            style={styles.toolbar}
-            iconTint={Palette.foreground}
-            selectedIconTint={Palette.primary}
-            disabledIconTint={Palette.mutedForeground}
-          />
-        ) : null}
       </KeyboardAvoidingView>
 
       {/* Share modal (owner only) */}
@@ -676,58 +742,113 @@ export default function NoteScreen() {
           onPress={() => setTagPickerVisible(false)}
         />
         <View style={styles.tagSheetWrap} pointerEvents="box-none">
-          {/* Bottom padding lives INSIDE the sheet so the panel reaches the screen
-              edge while content clears gesture bars / home indicators. */}
-          <View
-            style={[
-              styles.tagSheet,
-              {
-                paddingBottom: sheetLayout.paddingBottom,
-                maxHeight: sheetLayout.maxHeight(0.7),
-              },
-            ]}>
-            <View style={styles.tagGrabber} />
-            <View style={styles.tagSheetHeader}>
-              <Text style={styles.tagSheetTitle}>Add a tag</Text>
-              <TouchableOpacity
-                onPress={() => setTagPickerVisible(false)}
-                hitSlop={10}
-                activeOpacity={0.7}
-                accessibilityLabel="Close tag picker">
-                <Ionicons name="close" size={24} color={Palette.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-            {tagsLoading ? (
-              <View style={styles.tagSheetCenter}>
-                <ActivityIndicator color={Palette.primary} />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            {/* Bottom padding lives INSIDE the sheet so the panel reaches the screen
+                edge while content clears gesture bars / home indicators. */}
+            <View
+              style={[
+                styles.tagSheet,
+                {
+                  paddingBottom: sheetLayout.paddingBottom,
+                  maxHeight: sheetLayout.maxHeight(0.7),
+                },
+              ]}>
+              <View style={styles.tagGrabber} />
+              <View style={styles.tagSheetHeader}>
+                <Text style={styles.tagSheetTitle}>Add a tag</Text>
+                <TouchableOpacity
+                  onPress={() => setTagPickerVisible(false)}
+                  hitSlop={10}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Close tag picker">
+                  <Ionicons name="close" size={24} color={Palette.mutedForeground} />
+                </TouchableOpacity>
               </View>
-            ) : availableTags.length === 0 ? (
-              <Text style={styles.tagSheetEmpty}>
-                No more tags to add. Create tags from the filter sheet.
-              </Text>
-            ) : (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {availableTags.map((tag) => (
-                  <TouchableOpacity
-                    key={tag.id}
-                    style={styles.tagPickRow}
-                    activeOpacity={0.7}
-                    onPress={() => handleAttachTag(tag)}>
-                    <View
-                      style={[
-                        styles.tagChipDot,
-                        { backgroundColor: tag.color || Palette.primary },
-                      ]}
-                    />
-                    <Text style={styles.tagPickLabel} numberOfLines={1}>
-                      {tag.name}
+              {tagsLoading ? (
+                <View style={styles.tagSheetCenter}>
+                  <ActivityIndicator color={Palette.primary} />
+                </View>
+              ) : (
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled">
+                  {availableTags.length === 0 ? (
+                    <Text style={styles.tagSheetEmpty}>
+                      All your tags are already on this note. Create a new one
+                      below.
                     </Text>
-                    <Ionicons name="add" size={20} color={Palette.primary} />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-          </View>
+                  ) : (
+                    availableTags.map((tag) => (
+                      <TouchableOpacity
+                        key={tag.id}
+                        style={styles.tagPickRow}
+                        activeOpacity={0.7}
+                        onPress={() => handleAttachTag(tag)}>
+                        <View
+                          style={[
+                            styles.tagChipDot,
+                            { backgroundColor: tag.color || Palette.primary },
+                          ]}
+                        />
+                        <Text style={styles.tagPickLabel} numberOfLines={1}>
+                          {tag.name}
+                        </Text>
+                        <Ionicons name="add" size={20} color={Palette.primary} />
+                      </TouchableOpacity>
+                    ))
+                  )}
+
+                  {/* Create a new tag inline, then attach it to this note. */}
+                  <View style={styles.tagCreateRow}>
+                    <View
+                      style={[styles.tagCreateDot, { backgroundColor: newTagColor }]}
+                    />
+                    <TextInput
+                      style={styles.tagCreateInput}
+                      value={newTag}
+                      onChangeText={setNewTag}
+                      placeholder="New tag"
+                      placeholderTextColor={Palette.mutedForeground}
+                      returnKeyType="done"
+                      onSubmitEditing={handleCreateTag}
+                      editable={!creatingTag}
+                    />
+                    {newTag.trim() ? (
+                      <TouchableOpacity
+                        style={styles.tagCreateBtn}
+                        activeOpacity={0.85}
+                        hitSlop={5}
+                        onPress={handleCreateTag}
+                        disabled={creatingTag}>
+                        {creatingTag ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Text style={styles.tagCreateBtnText}>Add</Text>
+                        )}
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                  <View style={styles.tagColorPicker}>
+                    {TAG_COLORS.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        onPress={() => setNewTagColor(c)}
+                        hitSlop={9}
+                        activeOpacity={0.7}
+                        accessibilityLabel={`Pick color ${c}`}
+                        style={[
+                          styles.tagColorSwatch,
+                          { backgroundColor: c },
+                          newTagColor === c && styles.tagColorSwatchActive,
+                        ]}
+                      />
+                    ))}
+                  </View>
+                </ScrollView>
+              )}
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </SafeAreaView>
@@ -805,10 +926,16 @@ const styles = StyleSheet.create({
 
   toolbar: {
     backgroundColor: Palette.muted,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Palette.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.border,
+    paddingHorizontal: 4,
   },
   toolbarLabel: { fontSize: 16, fontWeight: '700' },
+  toolbarDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 22,
+    backgroundColor: Palette.border,
+  },
 
   // Tag chips
   tagBar: { flexGrow: 0, paddingHorizontal: 20, marginBottom: 4 },
@@ -884,4 +1011,45 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   tagPickLabel: { flex: 1, fontSize: 16, color: Palette.foreground },
+
+  // Inline tag creation (inside the tag picker)
+  tagCreateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 48,
+    marginTop: 6,
+  },
+  tagCreateDot: { width: 16, height: 16, borderRadius: 8 },
+  tagCreateInput: {
+    flex: 1,
+    fontSize: 16,
+    color: Palette.foreground,
+    paddingVertical: 6,
+  },
+  tagCreateBtn: {
+    backgroundColor: Palette.primary,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 52,
+  },
+  tagCreateBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  tagColorPicker: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    paddingLeft: 28,
+    paddingTop: 8,
+  },
+  tagColorSwatch: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  tagColorSwatchActive: { borderColor: Palette.foreground },
 });
