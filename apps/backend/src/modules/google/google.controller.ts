@@ -42,7 +42,11 @@ export class GoogleController {
 
   @ApiOperation({ summary: 'Redirects to Google OAuth page' })
   @Get('auth')
-  async auth(@Query('token') token: string, @Res() res: Response) {
+  async auth(
+    @Query('token') token: string,
+    @Query('platform') platform: string,
+    @Res() res: Response,
+  ) {
     if (!token) {
       throw new UnauthorizedException('Authentication token is required');
     }
@@ -52,7 +56,10 @@ export class GoogleController {
         secret: process.env.JWT_ACCESS_SECRET,
       });
       const userId = payload.sub;
-      const url = this.googleService.getAuthUrl(userId);
+      // Encode the originating platform in `state` so the callback knows whether
+      // to redirect to the web app or deep-link back into the mobile app.
+      const state = platform === 'mobile' ? `${userId}|mobile` : userId;
+      const url = this.googleService.getAuthUrl(state);
       return res.redirect(url);
     } catch (error) {
       throw new UnauthorizedException('Invalid or expired authentication token');
@@ -195,11 +202,25 @@ export class GoogleCallbackController {
         return res.redirect(`${frontendUrl}/login?google_login=error&message=${encodeURIComponent(error.message)}`);
       }
     } else {
+      // Account-connect flow. `state` is the userId, optionally suffixed with
+      // `|mobile` when the request originated from the React Native app — in
+      // which case we deep-link back into the app instead of the web frontend.
+      const [userId, platform] = state.split('|');
+      const isMobile = platform === 'mobile';
       try {
-        await this.googleService.handleCallback(code, state);
-        return res.redirect(`${frontendUrl}/settings?google_connected=success`);
+        await this.googleService.handleCallback(code, userId);
+        return res.redirect(
+          isMobile
+            ? 'cinely://google?google_connected=success'
+            : `${frontendUrl}/settings?google_connected=success`,
+        );
       } catch (error) {
-        return res.redirect(`${frontendUrl}/settings?google_connected=error&message=${encodeURIComponent(error.message)}`);
+        const message = encodeURIComponent(error.message);
+        return res.redirect(
+          isMobile
+            ? `cinely://google?google_connected=error&message=${message}`
+            : `${frontendUrl}/settings?google_connected=error&message=${message}`,
+        );
       }
     }
   }

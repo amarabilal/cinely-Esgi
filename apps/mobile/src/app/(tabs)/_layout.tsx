@@ -44,6 +44,15 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="notebooks"
+        options={{
+          title: 'Notebooks',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="sparkles-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',

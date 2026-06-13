@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Palette } from '@/constants/theme';
 import { installNotificationHandler, registerForPush } from '@/lib/push';
 import { useAuthStore } from '@/stores/auth';
+import { useNotificationsStore } from '@/stores/notifications';
 
 /**
  * Auth gate: redirects based on auth status.
@@ -57,6 +58,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (status === 'authenticated') {
       void registerForPush();
+      // Load notifications + wire the live listener app-wide.
+      void useNotificationsStore.getState().load();
+      void useNotificationsStore.getState().initRealtime();
+    } else if (status === 'unauthenticated') {
+      useNotificationsStore.getState().reset();
     }
   }, [status]);
 

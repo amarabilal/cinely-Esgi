@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
   ScrollView,
@@ -15,21 +16,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { FilterSheet } from '@/components/filter-sheet';
 import { NoteCard } from '@/components/note-card';
+import { TemplateSheet } from '@/components/template-sheet';
 import { Palette } from '@/constants/theme';
 import { api } from '@/lib/api';
+import type { NoteTemplate } from '@/lib/templates';
 import type { Note } from '@/lib/types';
+import { useNotificationsStore } from '@/stores/notifications';
 
 type FilterKind = 'all' | 'favorites' | 'shared' | 'archived' | 'folder' | 'tag';
 
 interface ActiveFilter {
   kind: FilterKind;
-  /** Folder/tag id when kind is 'folder' | 'tag'. */
   id?: string;
-  /** Display name for folder/tag. */
   name?: string;
 }
 
-/** Build the request URL for the current filter. */
 function filterToRequest(filter: ActiveFilter): string {
   switch (filter.kind) {
     case 'favorites':
@@ -48,7 +49,6 @@ function filterToRequest(filter: ActiveFilter): string {
   }
 }
 
-/** Header title for the current filter. */
 function filterToTitle(filter: ActiveFilter): string {
   switch (filter.kind) {
     case 'favorites':
@@ -67,6 +67,11 @@ function filterToTitle(filter: ActiveFilter): string {
   }
 }
 
+/** Pinned notes float to the top; the server order is otherwise preserved. */
+function sortPinned(notes: Note[]): Note[] {
+  return [...notes].sort((a, b) => Number(!!b.isPinned) - Number(!!a.isPinned));
+}
+
 const CHIPS: { kind: FilterKind; label: string; icon?: keyof typeof Ionicons.glyphMap }[] = [
   { kind: 'all', label: 'All' },
   { kind: 'favorites', label: 'Favorites', icon: 'star' },
@@ -83,14 +88,21 @@ export default function NotesScreen() {
   const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<ActiveFilter>({ kind: 'all' });
   const [sheetVisible, setSheetVisible] = useState(false);
+  const [templateVisible, setTemplateVisible] = useState(false);
 
-  const loadNotes = useCallback(async (active?: ActiveFilter) => {
-    const target = active ?? filter;
-    const { data } = await api.get<Note[]>(filterToRequest(target));
-    setNotes(data);
-  }, [filter]);
+  const unread = useNotificationsStore((s) => s.unread);
+  const loadNotifications = useNotificationsStore((s) => s.load);
+  const initRealtime = useNotificationsStore((s) => s.initRealtime);
 
-  // Reload whenever the screen gains focus or the filter changes.
+  const loadNotes = useCallback(
+    async (active?: ActiveFilter) => {
+      const target = active ?? filter;
+      const { data } = await api.get<Note[]>(filterToRequest(target));
+      setNotes(data);
+    },
+    [filter],
+  );
+
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -103,16 +115,18 @@ export default function NotesScreen() {
             setLoadError(false);
           }
         } catch {
-          // leave existing list; pull-to-refresh can retry
           if (active) setLoadError(true);
         } finally {
           if (active) setLoading(false);
         }
       })();
+      // Keep the notification badge fresh + ensure the live listener is wired.
+      void loadNotifications();
+      void initRealtime();
       return () => {
         active = false;
       };
-    }, [filter]),
+    }, [filter, loadNotifications, initRealtime]),
   );
 
   const onRefresh = useCallback(async () => {
@@ -121,26 +135,88 @@ export default function NotesScreen() {
       await loadNotes();
       setLoadError(false);
     } catch {
-      // keep current list
       setLoadError(true);
     } finally {
       setRefreshing(false);
     }
   }, [loadNotes]);
 
-  async function handleCreate() {
-    if (creating) return;
-    setCreating(true);
-    try {
-      const { data } = await api.post<Note>('/notes', {});
-      router.push(`/note/${data.id}`);
-    } catch {
-      // no-op; could surface a toast later
-    } finally {
-      setCreating(false);
-    }
-  }
+  const createFromTemplate = useCallback(
+    async (template: NoteTemplate) => {
+      if (creating) return;
+      setCreating(true);
+      try {
+        const { data } = await api.post<Note>('/notes', {
+          title: template.title,
+          content: template.content,
+        });
+        setTemplateVisible(false);
+        router.push(`/note/${data.id}`);
+      } catch {
+        Alert.alert('Could not create note', 'Please try again.');
+      } finally {
+        setCreating(false);
+      }
+    },
+    [creating, router],
+  );
 
+  // Long-press → quick actions on a note.
+  const noteActions = useCallback(
+    (note: Note) => {
+      const pinLabel = note.isPinned ? 'Unpin' : 'Pin';
+      const archiveLabel = note.isArchived ? 'Unarchive' : 'Archive';
+      Alert.alert(note.title?.trim() || 'Untitled', undefined, [
+        {
+          text: pinLabel,
+          onPress: async () => {
+            try {
+              await api.patch(`/notes/${note.id}/pin`);
+              await loadNotes();
+            } catch {
+              Alert.alert('Could not update', 'Please try again.');
+            }
+          },
+        },
+        {
+          text: archiveLabel,
+          onPress: async () => {
+            try {
+              await api.patch(`/notes/${note.id}/archive`);
+              await loadNotes();
+            } catch {
+              Alert.alert('Could not update', 'Please try again.');
+            }
+          },
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert('Delete note', 'Move this note to Trash?', [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await api.delete(`/notes/${note.id}`);
+                    await loadNotes();
+                  } catch {
+                    Alert.alert('Could not delete', 'Please try again.');
+                  }
+                },
+              },
+            ]);
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    },
+    [loadNotes],
+  );
+
+  const displayed = useMemo(() => sortPinned(notes), [notes]);
   const isChipActive = (kind: FilterKind) => filter.kind === kind;
 
   return (
@@ -150,8 +226,21 @@ export default function NotesScreen() {
           {filterToTitle(filter)}
         </Text>
         <TouchableOpacity
+          style={styles.bell}
+          onPress={() => router.push('/notifications')}
+          hitSlop={6}
+          activeOpacity={0.7}
+          accessibilityLabel="Notifications">
+          <Ionicons name="notifications-outline" size={24} color={Palette.foreground} />
+          {unread > 0 ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
+        <TouchableOpacity
           style={styles.addButton}
-          onPress={handleCreate}
+          onPress={() => setTemplateVisible(true)}
           disabled={creating}
           hitSlop={4}
           activeOpacity={0.8}
@@ -192,7 +281,6 @@ export default function NotesScreen() {
             );
           })}
 
-          {/* Folder/tag active chip, if any */}
           {(filter.kind === 'folder' || filter.kind === 'tag') && (
             <View style={[styles.chip, styles.chipActive]}>
               <Ionicons
@@ -228,12 +316,13 @@ export default function NotesScreen() {
         </View>
       ) : (
         <FlatList
-          data={notes}
+          data={displayed}
           keyExtractor={(n) => n.id}
           renderItem={({ item }) => (
             <NoteCard
               note={item}
               onPress={() => router.push(`/note/${item.id}`)}
+              onLongPress={() => noteActions(item)}
             />
           )}
           contentContainerStyle={styles.listContent}
@@ -272,6 +361,13 @@ export default function NotesScreen() {
         />
       )}
 
+      <TemplateSheet
+        visible={templateVisible}
+        busy={creating}
+        onClose={() => setTemplateVisible(false)}
+        onSelect={createFromTemplate}
+      />
+
       <FilterSheet
         visible={sheetVisible}
         onClose={() => setSheetVisible(false)}
@@ -282,6 +378,10 @@ export default function NotesScreen() {
         onSelectTag={(id, name) => {
           setFilter({ kind: 'tag', id, name });
           setSheetVisible(false);
+        }}
+        onOpenTrash={() => {
+          setSheetVisible(false);
+          router.push('/trash');
         }}
       />
     </SafeAreaView>
@@ -305,6 +405,25 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Palette.foreground,
   },
+  bell: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: Palette.destructive,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { color: '#ffffff', fontSize: 10, fontWeight: '700' },
   addButton: {
     width: 40,
     height: 40,
