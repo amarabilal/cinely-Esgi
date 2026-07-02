@@ -87,6 +87,14 @@ export default function DashboardScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Dashboard</Text>
+        <TouchableOpacity
+          style={styles.calendarButton}
+          onPress={() => router.push('/calendar')}
+          activeOpacity={0.7}
+          accessibilityLabel="Open calendar">
+          <Ionicons name="calendar-outline" size={20} color={Palette.primary} />
+          <Text style={styles.calendarLabel}>Calendar</Text>
+        </TouchableOpacity>
       </View>
 
       {loading && !stats ? (
@@ -180,11 +188,26 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Palette.background },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 12,
   },
   headerTitle: { fontSize: 28, fontWeight: '800', color: Palette.foreground },
+  calendarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Palette.border,
+    backgroundColor: Palette.muted,
+  },
+  calendarLabel: { fontSize: 14, fontWeight: '600', color: Palette.primary },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scrollContent: { paddingHorizontal: 16, paddingBottom: 32, gap: 8 },
 

@@ -24,6 +24,7 @@ interface FilterSheetProps {
   onClose: () => void;
   onSelectFolder: (id: string, name: string) => void;
   onSelectTag: (id: string, name: string) => void;
+  onOpenTrash?: () => void;
 }
 
 /** Preset colors offered when creating/editing a tag. */
@@ -43,6 +44,7 @@ export function FilterSheet({
   onClose,
   onSelectFolder,
   onSelectTag,
+  onOpenTrash,
 }: FilterSheetProps) {
   const sheetLayout = useSheetLayout();
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -264,6 +266,26 @@ export function FilterSheet({
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}>
+                {/* Trash shortcut */}
+                {onOpenTrash ? (
+                  <TouchableOpacity
+                    style={styles.trashRow}
+                    activeOpacity={0.7}
+                    onPress={onOpenTrash}>
+                    <Ionicons
+                      name="trash-outline"
+                      size={20}
+                      color={Palette.mutedForeground}
+                    />
+                    <Text style={styles.trashLabel}>Trash</Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color={Palette.mutedForeground}
+                    />
+                  </TouchableOpacity>
+                ) : null}
+
                 {/* Folders */}
                 <Text style={styles.sectionTitle}>Folders</Text>
                 {folders.length === 0 ? (
@@ -521,6 +543,15 @@ const styles = StyleSheet.create({
   sheetTitle: { fontSize: 20, fontWeight: '800', color: Palette.foreground },
   center: { paddingVertical: 48, alignItems: 'center', justifyContent: 'center' },
   scrollContent: { paddingBottom: 8 },
+  trashRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 48,
+    paddingVertical: 6,
+    marginBottom: 6,
+  },
+  trashLabel: { flex: 1, fontSize: 16, fontWeight: '600', color: Palette.foreground },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '700',

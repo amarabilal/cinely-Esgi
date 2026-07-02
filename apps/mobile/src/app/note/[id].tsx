@@ -22,9 +22,18 @@ import {
 } from 'react-native-pell-rich-editor';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ActionSheet, type ActionItem } from '@/components/action-sheet';
 import { ShareModal } from '@/components/share-modal';
 import { Palette } from '@/constants/theme';
+import { suggestTitle, summarizeContent, suggestTags } from '@/lib/ai';
 import { api } from '@/lib/api';
+import { stripHtml } from '@/lib/format';
+import {
+  exportNoteToDrive,
+  getGoogleStatus,
+  sendNoteEmail,
+  syncNoteToCalendar,
+} from '@/lib/google';
 import { useSheetLayout } from '@/lib/sheet';
 import {
   connectSocket,
@@ -41,7 +50,16 @@ const AUTOSAVE_DELAY = 1400;
 /** ms to wait after the last edit before broadcasting a realtime update. */
 const REALTIME_DELAY = 400;
 
+/** Average reading speed for the reading-time estimate. */
+const WORDS_PER_MINUTE = 200;
+
 type SaveState = 'idle' | 'saving' | 'saved';
+
+/** Word count from an HTML string (strips tags, splits on whitespace). */
+function countWords(html: string): number {
+  const text = stripHtml(html ?? '').trim();
+  return text ? text.split(/\s+/).length : 0;
+}
 
 /**
  * A non-format pseudo-action used to draw a vertical divider between toolbar
@@ -123,12 +141,30 @@ export default function NoteScreen() {
   const [error, setError] = useState(false);
   const [title, setTitle] = useState('');
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const [wordCount, setWordCount] = useState(0);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [tags, setTags] = useState<Tag[]>([]);
   const [shareVisible, setShareVisible] = useState(false);
   const [tagPickerVisible, setTagPickerVisible] = useState(false);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
+  // Google integration (per-note export actions).
+  const [googleConnected, setGoogleConnected] = useState(false);
+  // "More" actions bottom sheet.
+  const [menuVisible, setMenuVisible] = useState(false);
+  // AI assistant (suggest title / summarize / suggest tags).
+  const [aiMenuVisible, setAiMenuVisible] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [summaryVisible, setSummaryVisible] = useState(false);
+  const [summaryText, setSummaryText] = useState('');
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [suggestVisible, setSuggestVisible] = useState(false);
+  // Email-note modal.
+  const [emailVisible, setEmailVisible] = useState(false);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
   // New-tag creation (from inside this note's tag picker).
   const [newTag, setNewTag] = useState('');
   const [newTagColor, setNewTagColor] = useState(TAG_COLORS[5]);
@@ -182,6 +218,8 @@ export default function NoteScreen() {
         titleRef.current = data.title ?? '';
         contentRef.current = data.content ?? '';
         setIsFavorite(data.isFavorite);
+        setIsPinned(!!data.isPinned);
+        setWordCount(countWords(data.content ?? ''));
         setTags(data.tags ?? []);
       } catch {
         if (active) setError(true);
@@ -383,6 +421,7 @@ export default function NoteScreen() {
   const onChangeContent = useCallback(
     (html: string) => {
       contentRef.current = html;
+      setWordCount(countWords(html));
       // setContentHTML (remote apply) triggers onChange; don't re-broadcast it.
       if (applyingRemote.current) return;
       markLocalEditing();
@@ -405,6 +444,17 @@ export default function NoteScreen() {
       setIsFavorite(data.isFavorite);
     } catch {
       // ignore; leave the current state
+    }
+  }, [id]);
+
+  const handlePin = useCallback(async () => {
+    // optimistic toggle
+    setIsPinned((p) => !p);
+    try {
+      const { data } = await api.patch<Note>(`/notes/${id}/pin`);
+      setIsPinned(!!data.isPinned);
+    } catch {
+      setIsPinned((p) => !p);
     }
   }, [id]);
 
@@ -516,6 +566,200 @@ export default function NoteScreen() {
     [allTags, tags],
   );
 
+  // --- Google per-note actions -----------------------------------------------
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const status = await getGoogleStatus();
+        if (active) setGoogleConnected(status.connected);
+      } catch {
+        // leave disconnected; actions just won't be offered
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleExportDrive = useCallback(async () => {
+    try {
+      const link = await exportNoteToDrive(id);
+      Alert.alert('Exported to Drive', link ? 'Opened as a Google Doc.' : 'Done.');
+    } catch {
+      Alert.alert('Export failed', 'Please try again.');
+    }
+  }, [id]);
+
+  const handleSyncCalendar = useCallback(async () => {
+    const start = new Date();
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    try {
+      await syncNoteToCalendar(id, start, end);
+      Alert.alert('Added to Calendar', 'A 1-hour event was created (starting now).');
+    } catch {
+      Alert.alert('Calendar sync failed', 'Please try again.');
+    }
+  }, [id]);
+
+  const handleSendEmail = useCallback(async () => {
+    const to = emailTo.trim();
+    if (!to) return;
+    setEmailSending(true);
+    try {
+      await sendNoteEmail(to, emailSubject.trim() || titleRef.current || 'Note', contentRef.current);
+      setEmailVisible(false);
+      setEmailTo('');
+      Alert.alert('Email sent', `Sent to ${to}.`);
+    } catch {
+      Alert.alert('Could not send', 'Please try again.');
+    } finally {
+      setEmailSending(false);
+    }
+  }, [emailTo, emailSubject]);
+
+  /** Consolidated "more" actions: organize + Google export, shown in a styled sheet. */
+  const moreActions = useMemo<ActionItem[]>(() => {
+    const items: ActionItem[] = [];
+    if (isOwner) {
+      items.push({
+        label: isPinned ? 'Unpin' : 'Pin',
+        icon: isPinned ? 'pin' : 'pin-outline',
+        onPress: () => void handlePin(),
+      });
+    }
+    items.push({
+      label: 'Archive',
+      icon: 'archive-outline',
+      onPress: () => void handleArchive(),
+    });
+    if (googleConnected) {
+      items.push({
+        label: 'Export to Google Drive',
+        icon: 'cloud-upload-outline',
+        onPress: () => void handleExportDrive(),
+      });
+      items.push({
+        label: 'Add to Google Calendar',
+        icon: 'calendar-outline',
+        onPress: () => void handleSyncCalendar(),
+      });
+      items.push({
+        label: 'Email this note',
+        icon: 'mail-outline',
+        onPress: () => {
+          setEmailSubject(titleRef.current || 'Note');
+          setEmailVisible(true);
+        },
+      });
+    }
+    items.push({
+      label: 'Delete',
+      icon: 'trash-outline',
+      destructive: true,
+      onPress: () => handleDelete(),
+    });
+    return items;
+  }, [
+    isOwner,
+    isPinned,
+    googleConnected,
+    handlePin,
+    handleArchive,
+    handleDelete,
+    handleExportDrive,
+    handleSyncCalendar,
+  ]);
+
+  // --- AI assistant ----------------------------------------------------------
+  const hasContent = () => stripHtml(contentRef.current ?? '').trim().length > 0;
+
+  const doSuggestTitle = useCallback(async () => {
+    if (!hasContent()) {
+      Alert.alert('Nothing to work with', 'Write some content first.');
+      return;
+    }
+    setAiBusy(true);
+    try {
+      const t = await suggestTitle(contentRef.current);
+      if (t) {
+        setTitle(t);
+        titleRef.current = t;
+        scheduleSave();
+        broadcastRealtime();
+      }
+    } catch {
+      Alert.alert('Could not suggest a title', 'Please try again.');
+    } finally {
+      setAiBusy(false);
+    }
+  }, [scheduleSave, broadcastRealtime]);
+
+  const doSummarize = useCallback(async () => {
+    if (!hasContent()) {
+      Alert.alert('Nothing to summarize', 'Write some content first.');
+      return;
+    }
+    setAiBusy(true);
+    try {
+      const s = await summarizeContent(contentRef.current);
+      setSummaryText(s || 'No summary was generated.');
+      setSummaryVisible(true);
+    } catch {
+      Alert.alert('Could not summarize', 'Please try again.');
+    } finally {
+      setAiBusy(false);
+    }
+  }, []);
+
+  const doSuggestTags = useCallback(async () => {
+    if (!hasContent()) {
+      Alert.alert('Nothing to work with', 'Write some content first.');
+      return;
+    }
+    setAiBusy(true);
+    try {
+      const existing = tags.map((t) => t.name);
+      const sugg = await suggestTags(contentRef.current, existing);
+      setSuggestedTags(sugg);
+      setSuggestVisible(true);
+    } catch {
+      Alert.alert('Could not suggest tags', 'Please try again.');
+    } finally {
+      setAiBusy(false);
+    }
+  }, [tags]);
+
+  /** Create (or reuse) a tag for a suggested name and attach it to the note. */
+  const addSuggestedTag = useCallback(
+    async (name: string) => {
+      try {
+        const { data: all } = await api.get<Tag[]>('/tags');
+        let tag = all.find((t) => t.name.toLowerCase() === name.toLowerCase());
+        if (!tag) {
+          const color = TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
+          const { data: created } = await api.post<Tag>('/tags', { name, color });
+          tag = created;
+        }
+        setAllTags((prev) => (prev.some((t) => t.id === tag!.id) ? prev : [...prev, tag!]));
+        await handleAttachTag(tag);
+        setSuggestedTags((prev) => prev.filter((t) => t !== name));
+      } catch {
+        Alert.alert('Could not add tag', 'Please try again.');
+      }
+    },
+    [handleAttachTag],
+  );
+
+  const aiActions = useMemo<ActionItem[]>(
+    () => [
+      { label: 'Suggest a title', icon: 'sparkles-outline', onPress: () => void doSuggestTitle() },
+      { label: 'Summarize note', icon: 'document-text-outline', onPress: () => void doSummarize() },
+      { label: 'Suggest tags', icon: 'pricetags-outline', onPress: () => void doSuggestTags() },
+    ],
+    [doSuggestTitle, doSummarize, doSuggestTags],
+  );
+
   // --- Render ----------------------------------------------------------------
   if (loading) {
     return (
@@ -622,18 +866,41 @@ export default function NoteScreen() {
               />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={handleArchive}
-              activeOpacity={0.7}>
-              <Ionicons name="archive-outline" size={22} color={Palette.foreground} />
-            </TouchableOpacity>
+            {isOwner ? (
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={handlePin}
+                activeOpacity={0.7}
+                accessibilityLabel={isPinned ? 'Unpin note' : 'Pin note'}>
+                <Ionicons
+                  name={isPinned ? 'pin' : 'pin-outline'}
+                  size={21}
+                  color={isPinned ? Palette.primary : Palette.foreground}
+                />
+              </TouchableOpacity>
+            ) : null}
+
+            {canEdit ? (
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => setAiMenuVisible(true)}
+                disabled={aiBusy}
+                activeOpacity={0.7}
+                accessibilityLabel="AI assistant">
+                {aiBusy ? (
+                  <ActivityIndicator size="small" color={Palette.primary} />
+                ) : (
+                  <Ionicons name="sparkles" size={20} color={Palette.primary} />
+                )}
+              </TouchableOpacity>
+            ) : null}
 
             <TouchableOpacity
               style={styles.iconButton}
-              onPress={handleDelete}
-              activeOpacity={0.7}>
-              <Ionicons name="trash-outline" size={22} color={Palette.destructive} />
+              onPress={() => setMenuVisible(true)}
+              activeOpacity={0.7}
+              accessibilityLabel="More actions">
+              <Ionicons name="ellipsis-horizontal" size={22} color={Palette.foreground} />
             </TouchableOpacity>
           </View>
         </View>
@@ -648,6 +915,14 @@ export default function NoteScreen() {
           editable={!readOnly}
           multiline
         />
+
+        {/* Word count / reading time */}
+        <Text style={styles.wordCount}>
+          {wordCount} {wordCount === 1 ? 'word' : 'words'} ·{' '}
+          {wordCount < WORDS_PER_MINUTE
+            ? '< 1 min read'
+            : `${Math.ceil(wordCount / WORDS_PER_MINUTE)} min read`}
+        </Text>
 
         {/* Tag chips */}
         <ScrollView
@@ -722,6 +997,102 @@ export default function NoteScreen() {
         />
       </KeyboardAvoidingView>
 
+      {/* More actions (styled bottom sheet) */}
+      <ActionSheet
+        visible={menuVisible}
+        title={title?.trim() || 'Note'}
+        actions={moreActions}
+        onClose={() => setMenuVisible(false)}
+      />
+
+      {/* AI assistant (styled bottom sheet) */}
+      <ActionSheet
+        visible={aiMenuVisible}
+        title="AI assistant"
+        actions={aiActions}
+        onClose={() => setAiMenuVisible(false)}
+      />
+
+      {/* AI summary */}
+      <Modal
+        visible={summaryVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSummaryVisible(false)}>
+        <Pressable style={styles.tagBackdrop} onPress={() => setSummaryVisible(false)} />
+        <View style={styles.tagSheetWrap} pointerEvents="box-none">
+          <View
+            style={[
+              styles.tagSheet,
+              { paddingBottom: sheetLayout.paddingBottom, maxHeight: sheetLayout.maxHeight(0.7) },
+            ]}>
+            <View style={styles.tagGrabber} />
+            <View style={styles.tagSheetHeader}>
+              <Text style={styles.tagSheetTitle}>Summary</Text>
+              <TouchableOpacity
+                onPress={() => setSummaryVisible(false)}
+                hitSlop={10}
+                activeOpacity={0.7}
+                accessibilityLabel="Close summary">
+                <Ionicons name="close" size={24} color={Palette.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.summaryText}>{summaryText}</Text>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* AI suggested tags */}
+      <Modal
+        visible={suggestVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSuggestVisible(false)}>
+        <Pressable style={styles.tagBackdrop} onPress={() => setSuggestVisible(false)} />
+        <View style={styles.tagSheetWrap} pointerEvents="box-none">
+          <View
+            style={[
+              styles.tagSheet,
+              { paddingBottom: sheetLayout.paddingBottom, maxHeight: sheetLayout.maxHeight(0.6) },
+            ]}>
+            <View style={styles.tagGrabber} />
+            <View style={styles.tagSheetHeader}>
+              <Text style={styles.tagSheetTitle}>Suggested tags</Text>
+              <TouchableOpacity
+                onPress={() => setSuggestVisible(false)}
+                hitSlop={10}
+                activeOpacity={0.7}
+                accessibilityLabel="Close suggestions">
+                <Ionicons name="close" size={24} color={Palette.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+            {suggestedTags.length === 0 ? (
+              <Text style={styles.tagSheetEmpty}>No suggestions for this note.</Text>
+            ) : (
+              <>
+                <Text style={styles.suggHint}>Tap a tag to add it to this note.</Text>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View style={styles.suggWrap}>
+                    {suggestedTags.map((name) => (
+                      <TouchableOpacity
+                        key={name}
+                        style={styles.suggChip}
+                        activeOpacity={0.7}
+                        onPress={() => addSuggestedTag(name)}>
+                        <Ionicons name="add" size={15} color={Palette.primary} />
+                        <Text style={styles.suggChipText}>{name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       {/* Share modal (owner only) */}
       {isOwner ? (
         <ShareModal
@@ -730,6 +1101,59 @@ export default function NoteScreen() {
           onClose={() => setShareVisible(false)}
         />
       ) : null}
+
+      {/* Email-this-note modal (Gmail via connected Google account) */}
+      <Modal
+        visible={emailVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEmailVisible(false)}>
+        <Pressable style={styles.tagBackdrop} onPress={() => setEmailVisible(false)} />
+        <View style={styles.emailWrap} pointerEvents="box-none">
+          <View style={styles.emailDialog}>
+            <Text style={styles.emailTitle}>Email this note</Text>
+            <TextInput
+              style={styles.emailInput}
+              value={emailTo}
+              onChangeText={setEmailTo}
+              placeholder="Recipient email"
+              placeholderTextColor={Palette.mutedForeground}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoFocus
+              editable={!emailSending}
+            />
+            <TextInput
+              style={styles.emailInput}
+              value={emailSubject}
+              onChangeText={setEmailSubject}
+              placeholder="Subject"
+              placeholderTextColor={Palette.mutedForeground}
+              editable={!emailSending}
+            />
+            <View style={styles.emailActions}>
+              <TouchableOpacity
+                style={styles.emailCancel}
+                onPress={() => setEmailVisible(false)}
+                disabled={emailSending}
+                activeOpacity={0.7}>
+                <Text style={styles.emailCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.emailSend}
+                onPress={handleSendEmail}
+                disabled={emailSending || !emailTo.trim()}
+                activeOpacity={0.85}>
+                {emailSending ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.emailSendText}>Send</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Tag picker */}
       <Modal
@@ -922,6 +1346,12 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 8,
   },
+  wordCount: {
+    fontSize: 12,
+    color: Palette.mutedForeground,
+    paddingHorizontal: 20,
+    paddingBottom: 6,
+  },
   editor: { flex: 1, paddingHorizontal: 6 },
 
   toolbar: {
@@ -1052,4 +1482,64 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   tagColorSwatchActive: { borderColor: Palette.foreground },
+
+  // Email-this-note modal
+  emailWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  emailDialog: {
+    width: '100%',
+    backgroundColor: Palette.background,
+    borderRadius: 16,
+    padding: 20,
+    gap: 12,
+  },
+  emailTitle: { fontSize: 17, fontWeight: '800', color: Palette.foreground },
+  emailInput: {
+    borderWidth: 1,
+    borderColor: Palette.border,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 46,
+    fontSize: 15,
+    color: Palette.foreground,
+  },
+  emailActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 4 },
+  emailCancel: {
+    paddingHorizontal: 16,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  emailCancelText: { fontSize: 15, fontWeight: '600', color: Palette.mutedForeground },
+  emailSend: {
+    paddingHorizontal: 20,
+    height: 42,
+    minWidth: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: Palette.primary,
+  },
+  emailSendText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+
+  // AI summary + suggested tags
+  summaryText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: Palette.foreground,
+    paddingBottom: 8,
+  },
+  suggHint: { fontSize: 13, color: Palette.mutedForeground, marginBottom: 10 },
+  suggWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  suggChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Palette.primary,
+  },
+  suggChipText: { fontSize: 14, fontWeight: '600', color: Palette.primary },
 });

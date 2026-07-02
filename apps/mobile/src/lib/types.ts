@@ -46,11 +46,60 @@ export interface Note {
   content: string;
   isFavorite: boolean;
   isArchived: boolean;
+  isPinned?: boolean;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
   folderId: string | null;
   tags: Tag[];
   createdAt: string;
   updatedAt: string;
   sharedPermission?: string;
+}
+
+/** In-app notification (web notifications dropdown parity). */
+export type NotificationType = 'SHARE' | 'EDIT' | 'SYSTEM';
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  message: string;
+  read: boolean;
+  metadata?: { noteId?: string } | null;
+  createdAt: string;
+}
+
+/** GET /google/status */
+export interface GoogleStatus {
+  connected: boolean;
+  email?: string;
+}
+
+/** A Google Calendar event (subset we render). */
+export interface CalendarEvent {
+  id: string;
+  summary?: string;
+  htmlLink?: string;
+  start?: { dateTime?: string; date?: string };
+  end?: { dateTime?: string; date?: string };
+}
+
+/** AI notebook. `notes` is only populated by GET /notebooks/:id. */
+export interface Notebook {
+  id: string;
+  title: string;
+  notes?: Note[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A chat message inside a notebook. */
+export interface NotebookMessage {
+  id: string;
+  notebookId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  citations?: string | null;
+  createdAt: string;
 }
 
 /** A note summary as returned in the dashboard "recentNotes" list. */
