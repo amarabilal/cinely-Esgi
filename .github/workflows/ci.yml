@@ -158,6 +158,17 @@ jobs:
           echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
           chmod 600 ~/.kube/config
 
+      - name: Inject secrets into K8s
+        run: |
+          kubectl patch secret app-secret -n cluster-project \
+            --type='json' \
+            -p="[
+              {\"op\":\"add\",\"path\":\"/data/GOOGLE_CLIENT_ID\",\"value\":\"$(echo -n '${{ secrets.GOOGLE_CLIENT_ID }}' | base64 -w0)\"},
+              {\"op\":\"add\",\"path\":\"/data/GOOGLE_CLIENT_SECRET\",\"value\":\"$(echo -n '${{ secrets.GOOGLE_CLIENT_SECRET }}' | base64 -w0)\"},
+              {\"op\":\"add\",\"path\":\"/data/GOOGLE_REDIRECT_URI\",\"value\":\"$(echo -n '${{ secrets.GOOGLE_REDIRECT_URI }}' | base64 -w0)\"},
+              {\"op\":\"add\",\"path\":\"/data/SENTRY_DSN\",\"value\":\"$(echo -n '${{ secrets.SENTRY_DSN }}' | base64 -w0)\"}
+            ]"
+
       - name: Apply manifests
         run: |
           kubectl apply -f k8s/10-config/app-configmap.yaml -n cluster-project

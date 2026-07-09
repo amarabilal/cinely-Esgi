@@ -119,6 +119,21 @@ spec:
                 secretKeyRef:
                   name: app-secret
                   key: OPENAI_API_KEY
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: GOOGLE_CLIENT_ID
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: GOOGLE_CLIENT_SECRET
+            - name: GOOGLE_REDIRECT_URI
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: GOOGLE_REDIRECT_URI
           # Chemin /api/health — global prefix 'api' défini dans main.ts
           readinessProbe:
             httpGet:
