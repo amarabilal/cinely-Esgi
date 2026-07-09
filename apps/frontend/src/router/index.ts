@@ -51,6 +51,12 @@ const router = createRouter({
       path: '/2fa',
       component: () => import('@/views/auth/TwoFactorView.vue'),
     },
+    // Google OAuth callback — Traefik route vers le frontend (SPA catch-all),
+    // ce composant relaie vers /api/google/callback pour que le backend traite le code.
+    {
+      path: '/callback',
+      component: () => import('@/views/auth/GoogleCallbackView.vue'),
+    },
 
     // App pages (auth required) — nested under the persistent AppLayout shell
     // (top bar + collapsible sidebar + command palette + toaster).
