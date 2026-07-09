@@ -184,6 +184,6 @@ jobs:
             frontend=bamara3/frontend-app:${{ github.sha }} \
             -n cluster-project
           kubectl rollout status deployment/backend \
-            -n cluster-project --timeout=120s
+            -n cluster-project --timeout=300s
           kubectl rollout status deployment/frontend \
-            -n cluster-project --timeout=120s
+            -n cluster-project --timeout=300s
