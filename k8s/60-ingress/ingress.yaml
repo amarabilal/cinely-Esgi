@@ -37,6 +37,14 @@ spec:
                 name: backend
                 port:
                   number: 3000
+          # Google OAuth callback — doit être routé vers le backend (exclu du préfixe /api)
+          - path: /callback
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 3000
           # Frontend SPA (catch-all)
           - path: /
             pathType: Prefix
@@ -57,6 +65,14 @@ spec:
                 port:
                   number: 3000
           - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 3000
+          # Google OAuth callback
+          - path: /callback
             pathType: Prefix
             backend:
               service:
