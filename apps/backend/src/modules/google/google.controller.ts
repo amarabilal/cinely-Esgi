@@ -167,8 +167,8 @@ export class GoogleController {
   }
 }
 
-// Controller mapped to the root for the Google redirect callback (excluding prefix "/api")
-@Controller('')
+// Controller mapped under /api/google/callback (uses standard /api prefix)
+@Controller('google')
 export class GoogleCallbackController {
   constructor(private readonly googleService: GoogleService) {}
 
