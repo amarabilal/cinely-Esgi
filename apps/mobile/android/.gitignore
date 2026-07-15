@@ -17,3 +17,7 @@ app/src/main/java/inline/
 
 # Bundle artifacts
 *.jsbundle
+
+# Release signing — never commit (public repo); see apps/mobile/RELEASING.md
+keystore.properties
+*.jks
