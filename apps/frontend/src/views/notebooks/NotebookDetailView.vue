@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useNotebooksStore } from '@/stores/notebooks.store';
 import { useNotesStore } from '@/stores/notes.store';
 import { notesApi } from '@/api/notes.api';
+import { markdownToNoteHtml } from '@/utils/markdown';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -233,7 +234,7 @@ async function handleSaveGuideAsNote() {
     // 1. Create note in library
     const { data: newNote } = await notesApi.create({
       title: previewGuideTitle.value,
-      content: previewGuideContent.value.replace(/\n/g, '<br />') // Simple markdown newlines to HTML
+      content: markdownToNoteHtml(previewGuideContent.value),
     });
     // 2. Add note as source to this notebook
     await store.addNoteToNotebook(notebookId, newNote.id);
@@ -635,7 +636,7 @@ function handleMessageClick(event: MouseEvent, message: any) {
 
               <!-- Markdown HTML View block -->
               <div class="flex-1 bg-card/45 border rounded-xl p-4 overflow-y-auto scrollbar-thin select-text min-h-[300px]">
-                <div class="prose prose-xs dark:prose-invert max-w-none text-xs text-foreground/90 space-y-2.5" v-html="parseMarkdown(previewGuideContent)"></div>
+                <div class="prose prose-xs dark:prose-invert max-w-none text-xs text-foreground/90 space-y-2.5" v-html="markdownToNoteHtml(previewGuideContent)"></div>
               </div>
             </div>
           </div>

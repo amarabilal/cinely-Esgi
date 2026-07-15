@@ -14,6 +14,18 @@ export interface SessionInfo {
   expiresAt: string;
 }
 
+export interface SubscriptionStatus {
+  configured: boolean;
+  status: string;
+  plan: {
+    name: string;
+    amount: number | null;
+    currency: string;
+    interval: string | null;
+  } | null;
+  customerEmail?: string | null;
+}
+
 export const settingsApi = {
   getProfile: () =>
     client.get<Profile>('/settings/profile'),
@@ -38,4 +50,12 @@ export const settingsApi = {
 
   disableTotp: (code: string) =>
     client.post('/settings/2fa/disable', { code }),
+
+  getSubscription: (sessionId?: string) =>
+    client.get<SubscriptionStatus>('/settings/subscription', {
+      params: sessionId ? { sessionId } : undefined,
+    }),
+
+  createSubscriptionCheckout: () =>
+    client.post<{ url: string }>('/settings/subscription/checkout'),
 };

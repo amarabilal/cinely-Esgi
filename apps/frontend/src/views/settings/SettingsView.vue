@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useSettingsStore } from '@/stores/settings.store';
+import { settingsApi, type SubscriptionStatus } from '@/api/settings.api';
 import { useAppLock } from '@/composables/useAppLock';
 import { isNative } from '@/lib/platform';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,15 @@ async function toggleAppLock(value: boolean) {
   appLockEnabled.value = appLock.isEnabled();
 }
 
-const activeTab = ref<'profile' | 'security' | 'sessions' | 'google'>('profile');
+type SettingsTab = 'profile' | 'security' | 'subscription' | 'sessions' | 'google';
+const activeTab = ref<SettingsTab>('profile');
+const settingsTabs: Array<[SettingsTab, string]> = [
+  ['profile', 'Profile'],
+  ['security', 'Security'],
+  ['subscription', 'Subscription'],
+  ['sessions', 'Sessions'],
+  ['google', 'Google'],
+];
 
 // Profile
 const firstName = ref('');
@@ -49,6 +58,53 @@ const disableError = ref('');
 const googleConnected = ref(false);
 const googleEmail = ref('');
 const googleLoading = ref(false);
+
+// Stripe test-mode subscription
+const subscription = ref<SubscriptionStatus | null>(null);
+const subscriptionLoading = ref(false);
+const subscriptionError = ref('');
+const subscriptionMessage = ref('');
+
+async function fetchSubscription(sessionId?: string) {
+  subscriptionLoading.value = true;
+  subscriptionError.value = '';
+  try {
+    const { data } = await settingsApi.getSubscription(sessionId);
+    subscription.value = data;
+    if (sessionId && !isSubscriptionActive(data.status)) {
+      sessionStorage.removeItem('stripeCheckoutSessionId');
+    }
+  } catch (error: any) {
+    subscriptionError.value = error.response?.data?.message || 'Failed to load subscription details.';
+  } finally {
+    subscriptionLoading.value = false;
+  }
+}
+
+async function startSubscriptionCheckout() {
+  subscriptionLoading.value = true;
+  subscriptionError.value = '';
+  try {
+    const { data } = await settingsApi.createSubscriptionCheckout();
+    window.location.assign(data.url);
+  } catch (error: any) {
+    subscriptionError.value = error.response?.data?.message || 'Failed to start Stripe Checkout.';
+    subscriptionLoading.value = false;
+  }
+}
+
+function formatPlanPrice(status: SubscriptionStatus | null): string {
+  if (!status?.plan || status.plan.amount == null) return 'Price unavailable';
+  const value = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: status.plan.currency.toUpperCase(),
+  }).format(status.plan.amount / 100);
+  return status.plan.interval ? `${value} / ${status.plan.interval}` : value;
+}
+
+function isSubscriptionActive(status?: string): boolean {
+  return status === 'active' || status === 'trialing';
+}
 
 async function checkGoogleStatus() {
   try {
@@ -106,6 +162,21 @@ onMounted(async () => {
     activeTab.value = 'google';
     window.history.replaceState({}, document.title, window.location.pathname);
   }
+
+  const subscriptionResult = params.get('subscription');
+  const checkoutSessionId = params.get('session_id') || sessionStorage.getItem('stripeCheckoutSessionId') || undefined;
+  if (subscriptionResult) {
+    activeTab.value = 'subscription';
+    if (subscriptionResult === 'success' && params.get('session_id')) {
+      sessionStorage.setItem('stripeCheckoutSessionId', params.get('session_id')!);
+      subscriptionMessage.value = 'Stripe test subscription completed successfully.';
+    } else if (subscriptionResult === 'canceled') {
+      subscriptionMessage.value = 'Checkout was canceled. No payment was made.';
+    }
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  await fetchSubscription(checkoutSessionId);
 
   await checkGoogleStatus();
 });
@@ -195,14 +266,79 @@ function formatDate(dateStr: string) {
       </header>
 
       <!-- Tabs -->
-      <div class="flex gap-1 mb-8 bg-muted rounded-xl p-1 max-w-lg">
-        <button v-for="[key, label] in [['profile', 'Profile'], ['security', 'Security'], ['sessions', 'Sessions'], ['google', 'Google']]"
+      <div class="flex gap-1 mb-8 bg-muted rounded-xl p-1 overflow-x-auto">
+        <button v-for="[key, label] in settingsTabs"
           :key="key"
-          @click="activeTab = key as any"
-          class="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
+          @click="activeTab = key"
+          class="flex-1 min-w-max px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           :class="activeTab === key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'">
           {{ label }}
         </button>
+      </div>
+
+      <!-- Subscription Tab -->
+      <div v-if="activeTab === 'subscription'" class="space-y-6">
+        <div class="bg-card border border-border rounded-xl p-6 space-y-6">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-base font-semibold text-foreground">Subscription</h2>
+                <Badge variant="secondary">Stripe test mode</Badge>
+              </div>
+              <p class="text-sm text-muted-foreground mt-1">
+                Test the complete hosted Stripe subscription checkout without making a real charge.
+              </p>
+            </div>
+            <Badge :variant="isSubscriptionActive(subscription?.status) ? 'default' : 'outline'">
+              {{ isSubscriptionActive(subscription?.status) ? subscription?.status : 'Inactive' }}
+            </Badge>
+          </div>
+
+          <div v-if="subscriptionLoading && !subscription" class="py-10 text-center text-sm text-muted-foreground">
+            Loading subscription…
+          </div>
+
+          <template v-else>
+            <div class="rounded-xl border border-border bg-background p-5">
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p class="text-lg font-semibold text-foreground">{{ subscription?.plan?.name || 'Cinely Pro' }}</p>
+                  <p class="mt-1 text-2xl font-bold tracking-tight text-foreground">{{ formatPlanPrice(subscription) }}</p>
+                  <p v-if="subscription?.customerEmail" class="mt-1 text-xs text-muted-foreground">
+                    Test subscription for {{ subscription.customerEmail }}
+                  </p>
+                </div>
+                <Button
+                  :disabled="subscriptionLoading || !subscription?.configured || isSubscriptionActive(subscription?.status)"
+                  @click="startSubscriptionCheckout">
+                  <template v-if="subscriptionLoading">Opening Stripe…</template>
+                  <template v-else-if="isSubscriptionActive(subscription?.status)">Test subscription active</template>
+                  <template v-else>Subscribe with Stripe</template>
+                </Button>
+              </div>
+
+              <ul class="mt-5 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                <li>✓ Hosted Stripe Checkout</li>
+                <li>✓ Recurring test subscription</li>
+                <li>✓ No real payment is charged</li>
+                <li>✓ Checkout verified by the API</li>
+              </ul>
+            </div>
+
+            <div v-if="!subscription?.configured" class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-foreground">
+              Stripe test mode is not configured. Add an <code>sk_test_…</code> secret key and a recurring test Price ID to the backend environment.
+            </div>
+            <p v-if="subscriptionMessage" class="text-sm text-primary">{{ subscriptionMessage }}</p>
+            <p v-if="subscriptionError" class="text-sm text-destructive">{{ subscriptionError }}</p>
+          </template>
+        </div>
+
+        <div class="bg-card border border-border rounded-xl p-6 space-y-2">
+          <h3 class="text-sm font-semibold text-foreground">Test payment details</h3>
+          <p class="text-sm text-muted-foreground">
+            In Stripe Checkout, use card <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">4242 4242 4242 4242</code>, any future expiry date, and any three-digit CVC. Never enter a real card in this demo.
+          </p>
+        </div>
       </div>
 
       <!-- Profile Tab -->

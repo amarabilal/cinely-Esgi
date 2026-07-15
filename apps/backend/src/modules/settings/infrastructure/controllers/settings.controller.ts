@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Put, Post, Delete, Body, Param, HttpCode, UseGuards,
+  Controller, Get, Put, Post, Delete, Body, Param, Query, HttpCode, UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt.guard';
@@ -8,13 +8,17 @@ import { SettingsService } from '../../application/services/settings.service';
 import { UpdateProfileDto } from '../../application/dto/update-profile.dto';
 import { ChangePasswordDto } from '../../application/dto/change-password.dto';
 import { TotpVerifyDto } from '../../application/dto/totp-verify.dto';
+import { SubscriptionService } from '../../application/services/subscription.service';
 
 @ApiTags('settings')
 @ApiBearerAuth()
 @Controller('settings')
 @UseGuards(JwtAuthGuard)
 export class SettingsController {
-  constructor(private readonly settingsService: SettingsService) {}
+  constructor(
+    private readonly settingsService: SettingsService,
+    private readonly subscriptionService: SubscriptionService,
+  ) {}
 
   @Get('profile')
   getProfile(@CurrentUser() user: { sub: string }) {
@@ -56,5 +60,18 @@ export class SettingsController {
   @Post('2fa/disable')
   disableTotp(@CurrentUser() user: { sub: string }, @Body() dto: TotpVerifyDto) {
     return this.settingsService.disableTotp(user.sub, dto);
+  }
+
+  @Get('subscription')
+  getSubscription(
+    @CurrentUser() user: { sub: string },
+    @Query('sessionId') sessionId?: string,
+  ) {
+    return this.subscriptionService.getStatus(user.sub, sessionId);
+  }
+
+  @Post('subscription/checkout')
+  createSubscriptionCheckout(@CurrentUser() user: { sub: string }) {
+    return this.subscriptionService.createCheckoutSession(user.sub);
   }
 }
