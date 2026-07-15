@@ -60,6 +60,7 @@
     "@tailwindcss/typography": "^0.5.20",
     "@types/markdown-it": "^14.1.2",
     "@vitejs/plugin-vue": "^5.0.5",
+    "@vue/test-utils": "^2.4.11",
     "@vue/tsconfig": "^0.5.1",
     "autoprefixer": "^10.4.19",
     "class-variance-authority": "^0.7.1",
