@@ -20,6 +20,8 @@ redeploy needed.
 
 ## Per-release process
 
+Cut releases after merging to main, so the tag matches the source that built the APK.
+
 1. **Bump versions** (keep them in sync with the tag):
    - `android/app/build.gradle`: `versionCode` (+1 every release) and
      `versionName "X.Y.Z"`.
