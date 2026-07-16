@@ -473,7 +473,7 @@ function handleMessageClick(event: MouseEvent, message: any) {
             v-for="msg in store.messages"
             :key="msg.id"
             class="flex gap-3 max-w-2xl"
-            :class="msg.role === 'user' ? 'ml-auto justify-end flex-row-reverse' : ''"
+            :class="msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''"
           >
             <!-- Avatar -->
             <div class="size-7 rounded-full shrink-0 flex items-center justify-center border text-[10px]"
