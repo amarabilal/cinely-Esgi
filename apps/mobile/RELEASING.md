@@ -28,9 +28,14 @@ Cut releases after merging to main, so the tag matches the source that built the
    - `app.json`: `"version": "X.Y.Z"`.
 2. **Build** (10–20 min), from `apps/mobile/android`, in Git Bash:
    ```bash
+   EXPO_PUBLIC_API_URL="https://cinely.fr" \
    ANDROID_HOME="/c/Users/ADMIN/AppData/Local/Android/Sdk" \
    JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew assembleRelease
    ```
+   **`EXPO_PUBLIC_API_URL` is mandatory** — without it the bundle bakes in the
+   dev default `http://10.0.2.2:3000` (see `src/lib/config.ts`) and the app
+   cannot reach production.
+
    Machine gotchas already handled in the repo: CMake is pinned to 3.31.4 in
    `android/build.gradle` (3.22's ninja loops on the space in "Projet anuel");
    `debuggableVariants=[]` embeds the JS bundle.
@@ -46,6 +51,11 @@ Cut releases after merging to main, so the tag matches the source that built the
    Expect `Signer #1 certificate DN: CN=Cinely, OU=Mobile, O=Cinely, L=Paris, C=FR`.
    `CN=Android Debug` means `android/keystore.properties` was missing during
    the build.
+   - **Check the JS bundle targets production**, not the dev default:
+     ```bash
+     unzip -p app/build/outputs/apk/release/app-release.apk assets/index.android.bundle | grep -c "cinely\.fr"   # must be >= 1
+     unzip -p app/build/outputs/apk/release/app-release.apk assets/index.android.bundle | grep -c "10\.0\.2\.2"  # must be 0
+     ```
 4. **Publish** — the asset name MUST be `cinely.apk`:
    ```bash
    cp app/build/outputs/apk/release/app-release.apk /tmp/cinely.apk
