@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import PublicLayout from '@/components/layout/PublicLayout.vue';
+import GetTheAppSection from '@/components/marketing/GetTheAppSection.vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FileText, Users, History, ShieldCheck, Search, Tags } from 'lucide-vue-next';
@@ -53,5 +54,7 @@ const features = [
         </div>
       </div>
     </section>
+
+    <GetTheAppSection />
   </PublicLayout>
 </template>

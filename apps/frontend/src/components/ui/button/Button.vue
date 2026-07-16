@@ -13,6 +13,8 @@ const props = withDefaults(defineProps<{
   type?: 'button' | 'submit' | 'reset';
   /** When set, the button renders as a <RouterLink> to this route. */
   to?: string;
+  /** When set, the button renders as an external <a href> (rel="noopener"). */
+  href?: string;
 }>(), {
   variant: 'default',
   size: 'default',
@@ -33,20 +35,38 @@ const sizeClasses = computed(() => ({
   lg: 'h-10 px-5',
   icon: 'size-8',
 }[props.size]));
+
+const buttonClasses = computed(() => cn(
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+  variantClasses.value,
+  sizeClasses.value,
+));
 </script>
 
 <template>
-  <component
-    :is="to ? RouterLink : 'button'"
-    :to="to"
-    :type="to ? undefined : type"
+  <a
+    v-if="href"
+    :href="href"
+    rel="noopener"
     v-bind="$attrs"
-    :class="cn(
-      'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
-      variantClasses,
-      sizeClasses,
-    )"
+    :class="buttonClasses"
   >
     <slot />
-  </component>
+  </a>
+  <RouterLink
+    v-else-if="to"
+    :to="to"
+    v-bind="$attrs"
+    :class="buttonClasses"
+  >
+    <slot />
+  </RouterLink>
+  <button
+    v-else
+    :type="type"
+    v-bind="$attrs"
+    :class="buttonClasses"
+  >
+    <slot />
+  </button>
 </template>

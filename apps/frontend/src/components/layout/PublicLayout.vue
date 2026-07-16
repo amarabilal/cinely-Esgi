@@ -4,6 +4,7 @@ import { Sparkles } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import ThemeToggle from '@/components/ThemeToggle.vue';
 import { useAuthStore } from '@/stores/auth.store';
+import { ANDROID_APK_URL } from '@/lib/appLinks';
 
 const auth = useAuthStore();
 
@@ -13,11 +14,16 @@ const nav = [
   { to: '/contact', label: 'Contact' },
 ];
 
-const legal = [
+type FooterLink =
+  | { label: string; to: string; external?: undefined }
+  | { label: string; href: string; external: true };
+
+const legal: FooterLink[] = [
   { to: '/legal/cgu', label: 'Terms' },
   { to: '/legal/politique-confidentialite', label: 'Privacy' },
   { to: '/legal/cookies', label: 'Cookies' },
   { to: '/contact', label: 'Contact' },
+  { href: ANDROID_APK_URL, label: 'Android app', external: true },
 ];
 </script>
 
@@ -64,12 +70,19 @@ const legal = [
           <span>© 2026 Cinely. All rights reserved.</span>
         </div>
         <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          <RouterLink
-            v-for="l in legal"
-            :key="l.to + l.label"
-            :to="l.to"
-            class="transition-colors hover:text-foreground"
-          >{{ l.label }}</RouterLink>
+          <template v-for="l in legal" :key="l.label">
+            <a
+              v-if="l.external"
+              :href="l.href"
+              rel="noopener"
+              class="transition-colors hover:text-foreground"
+            >{{ l.label }}</a>
+            <RouterLink
+              v-else
+              :to="l.to"
+              class="transition-colors hover:text-foreground"
+            >{{ l.label }}</RouterLink>
+          </template>
         </div>
       </div>
     </footer>
