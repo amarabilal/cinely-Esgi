@@ -19,7 +19,8 @@ describe('Button', () => {
     expect(a.attributes('href')).toBe('https://example.com/file.apk');
     expect(a.attributes('rel')).toBe('noopener');
     expect(w.find('button').exists()).toBe(false);
-    expect(a.classes().length).toBeGreaterThan(0); // shares the button styling
+    expect(a.classes()).toContain('inline-flex'); // shares the button styling
+    expect(a.classes()).toContain('h-10'); // size="lg"
   });
 
   it('renders a RouterLink when to is set', () => {
@@ -33,6 +34,6 @@ describe('Button', () => {
     expect(link.props('to')).toBe('/register');
     expect(w.find('a[href]').exists()).toBe(false); // not the href branch
     expect(w.find('button').exists()).toBe(false);
-    expect(w.find('a').classes().length).toBeGreaterThan(0); // shares the button styling
+    expect(w.find('a').classes()).toContain('inline-flex'); // shares the button styling
   });
 });

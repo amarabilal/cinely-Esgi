@@ -35,6 +35,12 @@ const sizeClasses = computed(() => ({
   lg: 'h-10 px-5',
   icon: 'size-8',
 }[props.size]));
+
+const buttonClasses = computed(() => cn(
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+  variantClasses.value,
+  sizeClasses.value,
+));
 </script>
 
 <template>
@@ -43,11 +49,7 @@ const sizeClasses = computed(() => ({
     :href="href"
     rel="noopener"
     v-bind="$attrs"
-    :class="cn(
-      'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
-      variantClasses,
-      sizeClasses,
-    )"
+    :class="buttonClasses"
   >
     <slot />
   </a>
@@ -55,11 +57,7 @@ const sizeClasses = computed(() => ({
     v-else-if="to"
     :to="to"
     v-bind="$attrs"
-    :class="cn(
-      'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
-      variantClasses,
-      sizeClasses,
-    )"
+    :class="buttonClasses"
   >
     <slot />
   </RouterLink>
@@ -67,11 +65,7 @@ const sizeClasses = computed(() => ({
     v-else
     :type="type"
     v-bind="$attrs"
-    :class="cn(
-      'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
-      variantClasses,
-      sizeClasses,
-    )"
+    :class="buttonClasses"
   >
     <slot />
   </button>
