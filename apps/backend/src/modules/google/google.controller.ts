@@ -170,7 +170,10 @@ export class GoogleController {
 // Controller mapped under /api/google/callback (uses standard /api prefix)
 @Controller('google')
 export class GoogleCallbackController {
-  constructor(private readonly googleService: GoogleService) {}
+  constructor(
+    private readonly googleService: GoogleService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   @Get('callback')
   async callback(
@@ -184,9 +187,24 @@ export class GoogleCallbackController {
 
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-    if (state === 'login') {
+    const [stateKind, statePlatform] = state.split('|');
+
+    if (stateKind === 'login') {
+      const isMobile = statePlatform === 'mobile';
       try {
         const tokens = await this.googleService.handleLoginCallback(code);
+
+        if (isMobile) {
+          // Native clients can't read the httpOnly refresh cookie, so we hand
+          // back a short-lived, single-purpose code instead of tokens: the app
+          // exchanges it over HTTPS at POST /auth/google/exchange. Keeping the
+          // refresh token out of the cinely:// URL is the point.
+          const code_ = this.jwtService.sign(
+            { sub: tokens.userId, purpose: 'google-exchange' },
+            { expiresIn: '60s', secret: process.env.JWT_ACCESS_SECRET },
+          );
+          return res.redirect(`cinely://auth?google_login=success&code=${code_}`);
+        }
 
         const cookieOptions = {
           httpOnly: true,
@@ -199,7 +217,12 @@ export class GoogleCallbackController {
         res.cookie('refreshToken', tokens.refreshToken, cookieOptions);
         return res.redirect(`${frontendUrl}/login?google_login=success&token=${tokens.accessToken}`);
       } catch (error) {
-        return res.redirect(`${frontendUrl}/login?google_login=error&message=${encodeURIComponent(error.message)}`);
+        const message = encodeURIComponent(error.message);
+        return res.redirect(
+          isMobile
+            ? `cinely://auth?google_login=error&message=${message}`
+            : `${frontendUrl}/login?google_login=error&message=${message}`,
+        );
       }
     } else {
       // Account-connect flow. `state` is the userId, optionally suffixed with
