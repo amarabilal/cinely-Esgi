@@ -16,9 +16,14 @@ import {
 import { Palette } from '@/constants/theme';
 import { useAuthStore } from '@/stores/auth';
 
-type Props = { onError: (message: string) => void; disabled?: boolean };
+type Props = {
+  onError: (message: string) => void;
+  disabled?: boolean;
+  /** Reports the Google flow's in-flight state so the screen can disable its own submit. */
+  onLoadingChange?: (loading: boolean) => void;
+};
 
-export function GoogleSignInButton({ onError, disabled }: Props) {
+export function GoogleSignInButton({ onError, disabled, onLoadingChange }: Props) {
   const router = useRouter();
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
   const [loading, setLoading] = useState(false);
@@ -28,6 +33,7 @@ export function GoogleSignInButton({ onError, disabled }: Props) {
   async function handlePress() {
     if (isDisabled) return;
     setLoading(true);
+    onLoadingChange?.(true);
     try {
       const result = await loginWithGoogle();
       if (result.status === 'success') {
@@ -42,6 +48,7 @@ export function GoogleSignInButton({ onError, disabled }: Props) {
       onError('Sign-in failed, please try again.');
     } finally {
       setLoading(false);
+      onLoadingChange?.(false);
     }
   }
 

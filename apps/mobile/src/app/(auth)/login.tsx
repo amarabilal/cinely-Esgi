@@ -24,6 +24,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   async function handleSignIn() {
     if (loading) return;
@@ -46,7 +47,7 @@ export default function LoginScreen() {
     }
   }
 
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !loading;
+  const canSubmit = email.trim().length > 0 && password.length > 0 && !loading && !googleBusy;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -98,7 +99,7 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            <GoogleSignInButton onError={setError} disabled={loading} />
+            <GoogleSignInButton onError={setError} disabled={loading} onLoadingChange={setGoogleBusy} />
 
             <Link href="/(auth)/forgot-password" asChild>
               <TouchableOpacity activeOpacity={0.7}>

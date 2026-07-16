@@ -38,6 +38,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   async function handleCreate() {
     if (loading) return;
@@ -68,7 +69,8 @@ export default function RegisterScreen() {
     lastName.trim().length > 0 &&
     email.trim().length > 0 &&
     password.length > 0 &&
-    !loading;
+    !loading &&
+    !googleBusy;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -144,7 +146,7 @@ export default function RegisterScreen() {
               )}
             </TouchableOpacity>
 
-            <GoogleSignInButton onError={setError} disabled={loading} />
+            <GoogleSignInButton onError={setError} disabled={loading} onLoadingChange={setGoogleBusy} />
 
             <Link href="/(auth)/login" asChild>
               <TouchableOpacity activeOpacity={0.7}>
