@@ -246,7 +246,7 @@ export class GoogleService {
     const encodedMessage = Buffer.from(message)
       .toString('base64')
       .replace(/\+/g, '-')
-      .replace(/\
+      .replace(/\//g, '_')
       .replace(/=+$/, '');
 
     try {
