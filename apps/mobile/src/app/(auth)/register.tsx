@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Palette } from '@/constants/theme';
 import { useAuthStore } from '@/stores/auth';
 
@@ -142,6 +143,8 @@ export default function RegisterScreen() {
                 <Text style={styles.buttonText}>Create account</Text>
               )}
             </TouchableOpacity>
+
+            <GoogleSignInButton onError={setError} disabled={loading} />
 
             <Link href="/(auth)/login" asChild>
               <TouchableOpacity activeOpacity={0.7}>
