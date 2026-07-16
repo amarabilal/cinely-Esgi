@@ -1,14 +1,11 @@
-// Curated highlight.js grammars, loaded as a SEPARATE async chunk (see
-// loadCodeHighlighting in ./extensions). highlight.js auto-registers each
-// grammar's declared aliases (js, ts, html, py, sh, md, …) so `language-js`
-// etc. resolve without registering them by hand.
+
 import type { LanguageFn } from 'highlight.js';
 import javascript from 'highlight.js/lib/languages/javascript';
 import typescript from 'highlight.js/lib/languages/typescript';
-import xml from 'highlight.js/lib/languages/xml'; // also covers html
+import xml from 'highlight.js/lib/languages/xml';
 import css from 'highlight.js/lib/languages/css';
 import json from 'highlight.js/lib/languages/json';
-import bash from 'highlight.js/lib/languages/bash'; // also covers sh / shell
+import bash from 'highlight.js/lib/languages/bash';
 import python from 'highlight.js/lib/languages/python';
 import sql from 'highlight.js/lib/languages/sql';
 import markdown from 'highlight.js/lib/languages/markdown';

@@ -109,7 +109,7 @@ function onKeydown(e: KeyboardEvent) {
                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
-            
+
             <div class="space-y-1.5">
               <label for="email-subject" class="text-sm font-medium text-foreground">Sujet</label>
               <input

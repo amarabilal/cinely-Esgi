@@ -10,7 +10,7 @@ import {
 </script>
 
 <template>
-  <!-- An app shouldn't advertise its own APK: hidden inside the native shell. -->
+
   <div v-if="!isNative" class="bg-card border border-border rounded-xl p-6 space-y-3">
     <div class="flex items-center gap-2">
       <Smartphone class="size-4 text-primary" />

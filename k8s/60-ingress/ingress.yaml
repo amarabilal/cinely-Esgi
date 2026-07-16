@@ -4,11 +4,8 @@ metadata:
   name: app-ingress
   namespace: cluster-project
   annotations:
-    # Entrypoints HTTP + HTTPS
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    # Let's Encrypt via le resolver configuré dans traefik-config.yaml
     traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
-    # Redirection HTTP → HTTPS automatique
     traefik.ingress.kubernetes.io/router.middlewares: cluster-project-redirect-https@kubernetescrd
 spec:
   tls:
@@ -17,11 +14,9 @@ spec:
         - www.cinely.fr
       secretName: cinely-tls
   rules:
-    # Domaine principal
     - host: cinely.fr
       http:
         paths:
-          # WebSocket Socket.io — routé vers le backend AVANT /api
           - path: /socket.io
             pathType: Prefix
             backend:
@@ -29,7 +24,6 @@ spec:
                 name: backend
                 port:
                   number: 3000
-          # API REST
           - path: /api
             pathType: Prefix
             backend:
@@ -37,7 +31,6 @@ spec:
                 name: backend
                 port:
                   number: 3000
-          # Google OAuth callback — doit être routé vers le backend (exclu du préfixe /api)
           - path: /callback
             pathType: Prefix
             backend:
@@ -45,7 +38,6 @@ spec:
                 name: backend
                 port:
                   number: 3000
-          # Frontend SPA (catch-all)
           - path: /
             pathType: Prefix
             backend:
@@ -53,7 +45,6 @@ spec:
                 name: frontend
                 port:
                   number: 80
-    # www redirigé vers le même backend/frontend
     - host: www.cinely.fr
       http:
         paths:
@@ -71,7 +62,6 @@ spec:
                 name: backend
                 port:
                   number: 3000
-          # Google OAuth callback
           - path: /callback
             pathType: Prefix
             backend:
@@ -87,7 +77,6 @@ spec:
                 port:
                   number: 80
 ---
-# Middleware : redirection HTTP → HTTPS
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:

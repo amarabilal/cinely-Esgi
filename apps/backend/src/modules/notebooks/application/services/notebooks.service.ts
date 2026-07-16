@@ -58,9 +58,7 @@ export class NotebooksService {
 
   async addNote(userId: string, id: string, noteId: string): Promise<Notebook> {
     const notebook = await this.findOne(userId, id);
-    
-    // Verify user owns the note or it exists (we query by noteId)
-    // Note: for shared notes, check permissions if needed, but standard check is that user can access the note.
+
     const note = await this.noteRepository.findOne({
       where: { id: noteId, isDeleted: false },
     });
@@ -68,7 +66,6 @@ export class NotebooksService {
       throw new NotFoundException('Note not found');
     }
 
-    // Check if already added
     if (notebook.notes.some(n => n.id === noteId)) {
       return notebook;
     }
@@ -84,7 +81,7 @@ export class NotebooksService {
   }
 
   async getMessages(userId: string, notebookId: string): Promise<NotebookMessage[]> {
-    // Check ownership of notebook first
+
     await this.findOne(userId, notebookId);
     return this.messageRepository.find({
       where: { notebookId },
@@ -103,7 +100,6 @@ export class NotebooksService {
       throw new BadRequestException('Query cannot be empty');
     }
 
-    // Filter notes that will serve as sources
     let sources = notebook.notes;
     if (activeSourceIds && activeSourceIds.length > 0) {
       sources = sources.filter(n => activeSourceIds.includes(n.id));
@@ -113,7 +109,6 @@ export class NotebooksService {
       throw new BadRequestException('At least one source note must be selected');
     }
 
-    // Load recent message history for context (last 15 messages)
     const dbMessages = await this.messageRepository.find({
       where: { notebookId },
       order: { createdAt: 'DESC' },
@@ -123,14 +118,12 @@ export class NotebooksService {
       .reverse()
       .map(m => ({ role: m.role, content: m.content }));
 
-    // Request answer from AiService
     const aiResult = await this.aiService.queryNotebook(
       sources.map(s => ({ id: s.id, title: s.title, content: s.content })),
       history,
       query,
     );
 
-    // Save User message
     const userMessage = this.messageRepository.create({
       notebookId,
       role: 'user',
@@ -138,7 +131,6 @@ export class NotebooksService {
     });
     await this.messageRepository.save(userMessage);
 
-    // Save Assistant message
     const assistantMessage = this.messageRepository.create({
       notebookId,
       role: 'assistant',

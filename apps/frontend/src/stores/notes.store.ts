@@ -17,7 +17,6 @@ export const useNotesStore = defineStore('notes', () => {
   const trashedNotes = ref<Note[]>([]);
   const shares = ref<Share[]>([]);
 
-  // Track permission per note: 'OWNER' | 'READ' | 'WRITE'
   const notePermissions = ref<Record<string, 'OWNER' | 'READ' | 'WRITE'>>({});
 
   const currentPermission = computed<'OWNER' | 'READ' | 'WRITE'>(() => {

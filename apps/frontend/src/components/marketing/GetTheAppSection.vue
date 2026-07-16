@@ -9,7 +9,7 @@ import {
 </script>
 
 <template>
-  <!-- Get the app -->
+
   <section class="border-t border-border/60 px-6 py-20">
     <div class="mx-auto flex max-w-5xl flex-col items-center gap-10 md:flex-row md:justify-between">
       <div class="max-w-xl text-center md:text-left">
@@ -30,9 +30,7 @@ import {
         </div>
       </div>
       <div class="flex flex-col items-center gap-3">
-        <!-- Bound (not static) src: keeps the SFC asset-url transform from
-             turning this public-dir path into a module import, which vitest
-             cannot resolve. Rendered DOM is identical. -->
+
         <img
           :src="'/qr-android.svg'"
           alt="QR code linking to the Cinely Android APK download"

@@ -8,8 +8,6 @@ const emit = defineEmits<{ 'new-note': [] }>();
 const route = useRoute();
 const router = useRouter();
 
-// Notes is active on the overview, the archived list, and any individual note
-// editor (`/notes/:id`) — i.e. anything under `/notes/` that isn't search.
 const notesActive = computed(() => {
   if (route.path === '/notes' || route.path === '/notes/archived') return true;
   if (route.name === 'note-editor') return true;

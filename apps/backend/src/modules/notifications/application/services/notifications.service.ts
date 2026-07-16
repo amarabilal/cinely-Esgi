@@ -14,7 +14,6 @@ export interface PushPayload {
   data?: Record<string, string>;
 }
 
-// FCM error codes that mean a token is dead and should be pruned.
 const STALE_TOKEN_ERROR_CODES = [
   'messaging/registration-token-not-registered',
   'messaging/invalid-argument',
@@ -42,8 +41,6 @@ export class NotificationsService {
     @InjectRepository(DeviceToken)
     private readonly deviceTokenRepository: Repository<DeviceToken>,
   ) {}
-
-  // --- In-app notifications --------------------------------------------------
 
   async findAll(userId: string): Promise<Notification[]> {
     return this.notificationRepository.find({
@@ -92,8 +89,6 @@ export class NotificationsService {
     }
     await this.notificationRepository.remove(notification);
   }
-
-  // --- FCM push to mobile devices --------------------------------------------
 
   /**
    * Upsert a device token by its (unique) token value: if a row already exists
@@ -144,7 +139,7 @@ export class NotificationsService {
 
       await this.pruneStaleTokens(tokens, response);
     } catch (err) {
-      // Swallow: pushes are best-effort and must never break the caller.
+
       this.logger.error(
         `Failed to send push to user ${userId}: ${(err as Error)?.message ?? err}`,
       );
@@ -187,7 +182,7 @@ export class NotificationsService {
     this.initialized = true;
 
     try {
-      // Respect an app initialized elsewhere (avoid double init).
+
       if (getApps().length > 0) {
         this.isConfigured = true;
         return;

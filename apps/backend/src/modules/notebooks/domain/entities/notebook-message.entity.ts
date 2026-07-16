@@ -2,7 +2,7 @@ import {
   Entity, PrimaryGeneratedColumn, Column,
   CreateDateColumn, ManyToOne, JoinColumn
 } from 'typeorm';
-import { Notebook } from './notebook.entity'; // IDE Ref
+import { Notebook } from './notebook.entity';
 
 @Entity('notebook_messages')
 export class NotebookMessage {

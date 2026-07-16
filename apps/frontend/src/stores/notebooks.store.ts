@@ -7,7 +7,7 @@ export const useNotebooksStore = defineStore('notebooks', () => {
   const currentNotebook = ref<Notebook | null>(null);
   const messages = ref<NotebookMessage[]>([]);
   const activeSourceIds = ref<string[]>([]);
-  
+
   const isLoading = ref(false);
   const isChatting = ref(false);
   const isGenerating = ref(false);
@@ -27,7 +27,7 @@ export const useNotebooksStore = defineStore('notebooks', () => {
     try {
       const { data } = await notebooksApi.findOne(id);
       currentNotebook.value = data;
-      // Default to having all source notes active
+
       activeSourceIds.value = data.notes.map(n => n.id);
     } finally {
       isLoading.value = false;
@@ -58,12 +58,12 @@ export const useNotebooksStore = defineStore('notebooks', () => {
     const { data } = await notebooksApi.addNote(notebookId, noteId);
     if (currentNotebook.value?.id === notebookId) {
       currentNotebook.value = data;
-      // Auto-activate newly added source note
+
       if (!activeSourceIds.value.includes(noteId)) {
         activeSourceIds.value.push(noteId);
       }
     }
-    // Sync with global dashboard list
+
     const idx = notebooks.value.findIndex(n => n.id === notebookId);
     if (idx !== -1) notebooks.value[idx] = data;
   }
@@ -85,7 +85,7 @@ export const useNotebooksStore = defineStore('notebooks', () => {
 
   async function sendMessage(notebookId: string, query: string) {
     isChatting.value = true;
-    // Optimistic user message addition
+
     const tempUserMsg: NotebookMessage = {
       id: Math.random().toString(),
       notebookId,
@@ -101,11 +101,11 @@ export const useNotebooksStore = defineStore('notebooks', () => {
         query,
         activeSourceIds: activeSourceIds.value,
       });
-      // Replace temp user message and add assistant response
+
       messages.value = messages.value.filter(m => m.id !== tempUserMsg.id);
       messages.value.push(data.userMessage, data.assistantMessage);
     } catch (error) {
-      // Rollback optimistic update on error
+
       messages.value = messages.value.filter(m => m.id !== tempUserMsg.id);
       throw error;
     } finally {

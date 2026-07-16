@@ -7,7 +7,6 @@ on:
     branches: [main]
 
 jobs:
-  # ── Tests unitaires + fonctionnels ───────────────────────────
   test:
     name: Tests
     runs-on: ubuntu-latest
@@ -62,7 +61,6 @@ jobs:
           ANTHROPIC_API_KEY: sk-ant-ci-placeholder-not-used-in-tests
           OPENAI_API_KEY: sk-ci-placeholder-not-used-in-tests
 
-  # ── Audit sécurité npm ────────────────────────────────────────
   audit:
     name: Security Audit
     runs-on: ubuntu-latest
@@ -86,7 +84,6 @@ jobs:
         run: npm install && npm audit --audit-level=critical
         working-directory: apps/frontend
 
-  # ── Build + Push Docker ───────────────────────────────────────
   build:
     name: Build & Push
     runs-on: ubuntu-latest
@@ -134,7 +131,6 @@ jobs:
             VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}
             VITE_MATOMO_URL=${{ secrets.VITE_MATOMO_URL }}
 
-  # ── Deploy K3s ────────────────────────────────────────────────
   deploy:
     name: Deploy K3s
     runs-on: ubuntu-latest

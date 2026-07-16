@@ -115,7 +115,6 @@ async function onTagDrop(event: DragEvent) {
       <GripVertical class="size-3.5" />
     </span>
 
-    <!-- Pin indicator -->
     <span
       v-if="note.isPinned"
       class="absolute right-2 top-2 text-primary"

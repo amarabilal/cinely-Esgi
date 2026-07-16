@@ -9,10 +9,10 @@ export class ActivityLog {
   userId: string;
 
   @Column()
-  action: string; // 'CREATE' | 'EDIT' | 'DELETE' | 'RESTORE' | 'DUPLICATE' | 'SHARE'
+  action: string;
 
   @Column({ name: 'entity_type' })
-  entityType: string; // 'NOTE'
+  entityType: string;
 
   @Column({ name: 'entity_id' })
   entityId: string;

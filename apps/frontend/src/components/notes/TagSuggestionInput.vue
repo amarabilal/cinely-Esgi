@@ -26,7 +26,6 @@ const inputRef = ref<HTMLInputElement | null>(null);
 const trimmedQuery = computed(() => query.value.trim());
 const lowerQuery = computed(() => trimmedQuery.value.toLowerCase());
 
-// Tags not already on the note, filtered by the typed query.
 const filteredTags = computed<Tag[]>(() => {
   const excluded = new Set(props.existingTagIds);
   return store.tags.filter((tag) => {
@@ -36,7 +35,6 @@ const filteredTags = computed<Tag[]>(() => {
   });
 });
 
-// Whether the typed query exactly matches an already-existing tag name.
 const hasExactMatch = computed(() => {
   if (!lowerQuery.value) return false;
   return store.tags.some((tag) => tag.name.toLowerCase() === lowerQuery.value);
@@ -44,7 +42,6 @@ const hasExactMatch = computed(() => {
 
 const showCreateOption = computed(() => trimmedQuery.value.length > 0 && !hasExactMatch.value);
 
-// Combined option count (existing tags + optional create row) for keyboard nav.
 const optionCount = computed(() => filteredTags.value.length + (showCreateOption.value ? 1 : 0));
 
 const createOptionIndex = computed(() => (showCreateOption.value ? filteredTags.value.length : -1));
@@ -84,7 +81,6 @@ function commitCreate() {
   void nextTick(() => inputRef.value?.focus());
 }
 
-// Commit whichever option is currently highlighted.
 function commitActive() {
   if (optionCount.value === 0) return;
   if (activeIndex.value === createOptionIndex.value) {
@@ -118,7 +114,7 @@ function onKeydown(event: KeyboardEvent) {
       commitActive();
       break;
     case ',':
-      // Comma commits the highlighted option (or create) without inserting the comma.
+
       event.preventDefault();
       commitActive();
       break;
@@ -134,7 +130,7 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 function onBlur() {
-  // Delay so a click on an option registers before the dropdown closes.
+
   setTimeout(() => closeDropdown(), 120);
 }
 </script>

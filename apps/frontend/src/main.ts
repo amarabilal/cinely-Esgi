@@ -14,7 +14,6 @@ const app = createApp(App);
 app.use(createPinia());
 app.use(router);
 
-// GlitchTip — activé uniquement en production avec DSN configuré
 if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
     app,
@@ -26,8 +25,6 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
-// Matomo analytics — activé uniquement si consentement cookies accepté
-// et si VITE_MATOMO_URL est défini
 if (import.meta.env.VITE_MATOMO_URL && localStorage.getItem('cookie_consent') === 'accepted') {
   const _paq = (window as any)._paq = (window as any)._paq || [];
   _paq.push(['trackPageView']);
@@ -40,7 +37,6 @@ if (import.meta.env.VITE_MATOMO_URL && localStorage.getItem('cookie_consent') ==
   document.head.appendChild(script);
 }
 
-// Helper global pour tracker les events Matomo depuis n'importe quel composant
 export function trackEvent(category: string, action: string, name?: string) {
   const paq = (window as any)._paq;
   if (paq) paq.push(['trackEvent', category, action, name]);

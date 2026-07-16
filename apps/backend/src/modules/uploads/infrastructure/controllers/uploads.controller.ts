@@ -9,12 +9,11 @@ import { JwtAuthGuard } from '../../../../shared/guards/jwt.guard';
 import { CurrentUser } from '../../../../shared/decorators/current-user.decorator';
 import { UploadsService } from '../../application/services/uploads.service';
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://cinely.fr';
 const ONE_YEAR_SECONDS = 31536000;
 
-// Minimal shape of a Multer memory-storage file (avoids requiring @types/multer).
 interface MemoryFile {
   buffer: Buffer;
   mimetype: string;

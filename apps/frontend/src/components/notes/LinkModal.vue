@@ -23,7 +23,7 @@ watch(open, async (o) => {
 function submit() {
   const v = url.value.trim();
   if (!v) return;
-  // Prepend https:// when the user omits a scheme (but leave mailto:, anchors, relative paths alone).
+
   const href = /^(https?:\/\/|mailto:|tel:|\/|#)/i.test(v) ? v : `https://${v}`;
   emit('submit', href);
 }

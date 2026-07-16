@@ -152,7 +152,7 @@ export class NotesService {
     let ownerId = userId;
 
     if (!existing) {
-      // User is not the owner — check for WRITE permission via share
+
       const share = await this.shareRepository.findOne({
         where: { noteId: id, sharedWithId: userId },
         relations: ['note', 'note.tags'],
@@ -162,7 +162,7 @@ export class NotesService {
       }
       existing = share.note;
       ownerId = existing.userId;
-      // Shared users cannot change folder assignment
+
       delete (dto as Partial<typeof dto>).folderId;
     }
 
@@ -190,12 +190,12 @@ export class NotesService {
           ? `${editorUser.firstName ?? ''} ${editorUser.lastName ?? ''}`.trim() || 'Un utilisateur'
           : 'Un utilisateur';
         const message = `${editorName} a mis à jour la note "${updated.title || 'Sans titre'}".`;
-        
+
         if (updated.userId !== userId) {
           const notification = await this.notificationsService.create(updated.userId, 'EDIT', message, { noteId: id });
           this.notesGateway.sendNotification(updated.userId, notification);
         }
-        
+
         const shares = await this.shareRepository.find({ where: { noteId: id } });
         for (const share of shares) {
           if (share.sharedWithId !== userId) {
@@ -325,7 +325,6 @@ export class NotesService {
       this.logger.warn(`Failed to send share notification: ${err.message}`);
     }
 
-    // Best-effort FCM push to the recipient's mobile devices. Never block or fail the share.
     await this.notificationsService
       .sendToUser(targetUser.id, {
         title: 'New shared note',
@@ -431,7 +430,7 @@ export class NotesService {
     }
     const isPublic = !note.isPublic;
     const publicToken = isPublic ? (note.publicToken || require('crypto').randomUUID()) : null;
-    
+
     await this.noteRepository.update(userId, id, { isPublic, publicToken });
     return this.findOne(userId, id);
   }

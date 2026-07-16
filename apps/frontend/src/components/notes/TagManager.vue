@@ -12,13 +12,11 @@ const DEFAULT_COLOR = '#6366f1';
 
 const store = useNotesStore();
 
-// Per-row local edit state, keyed by tag id.
 const drafts = reactive<Record<string, { name: string; color: string }>>({});
-// Per-row "confirm delete" state.
+
 const confirmingDelete = ref<string | null>(null);
 const savingId = ref<string | null>(null);
 
-// Create-row state.
 const newName = ref('');
 const newColor = ref(DEFAULT_COLOR);
 const isCreating = ref(false);
@@ -144,7 +142,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
           </Button>
         </header>
 
-        <!-- Create row -->
         <div class="border-b bg-card px-4 py-3">
           <p class="mb-2 font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             New tag
@@ -170,7 +167,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
           </form>
         </div>
 
-        <!-- Tag list -->
         <div class="min-h-0 flex-1 overflow-y-auto p-2 scrollbar-thin">
           <p v-if="tags.length === 0" class="px-2 py-8 text-center text-sm text-muted-foreground">
             No tags yet. Create one above.
@@ -248,7 +244,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 </template>
 
 <style scoped>
-/* Backdrop fade. */
+
 .modal-enter-active,
 .modal-leave-active {
   transition: opacity 0.18s ease;
@@ -259,7 +255,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
   opacity: 0;
 }
 
-/* Panel scale + translate, decoupled from the backdrop fade. */
 .modal-enter-active .modal-panel,
 .modal-leave-active .modal-panel {
   transition:

@@ -11,7 +11,6 @@ function resolve(): Mode {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-// Module-level singleton so every ThemeToggle instance stays in sync.
 const mode = ref<Mode>('dark');
 
 function setClass(next: Mode) {
@@ -51,8 +50,7 @@ function animateThemeChange(next: Mode) {
     });
   } else {
     apply();
-    // Wait two frames so the new tokens are committed and painted before
-    // re-enabling transitions, otherwise the tail of the swap can still tween.
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => root.classList.remove('theme-switching'));
     });
@@ -62,7 +60,7 @@ function animateThemeChange(next: Mode) {
 export function useColorMode() {
   onMounted(() => {
     mode.value = resolve();
-    setClass(mode.value); // initial paint — no animation
+    setClass(mode.value);
   });
 
   function toggle() {

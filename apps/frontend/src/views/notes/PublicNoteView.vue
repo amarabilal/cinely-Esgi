@@ -49,7 +49,7 @@ onMounted(() => {
 <template>
   <PublicLayout>
     <div class="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
-      <!-- Back button if user is authenticated / or just standard back home link -->
+
       <div class="mb-6">
         <RouterLink
           to="/"
@@ -60,13 +60,11 @@ onMounted(() => {
         </RouterLink>
       </div>
 
-      <!-- Loading State -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-20 space-y-4">
         <div class="size-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
         <p class="text-sm text-muted-foreground animate-pulse">Chargement de la note publique...</p>
       </div>
 
-      <!-- Error State -->
       <div v-else-if="error" class="rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-center">
         <AlertCircle class="mx-auto size-10 text-destructive mb-3" />
         <h3 class="text-lg font-semibold text-foreground mb-1">Impossible d'accéder à la note</h3>
@@ -74,9 +72,8 @@ onMounted(() => {
         <Button to="/" variant="outline" size="sm">Aller à l'accueil</Button>
       </div>
 
-      <!-- Note View -->
       <article v-else-if="note" class="overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
-        <!-- Top bar indicating public view status -->
+
         <div class="flex items-center gap-2 border-b border-border bg-muted/30 px-6 py-3 text-xs text-muted-foreground">
           <Globe class="size-3.5 text-primary animate-pulse" />
           <span>Cette note est partagée publiquement en lecture seule.</span>
@@ -87,7 +84,7 @@ onMounted(() => {
             <h1 class="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
               {{ note.title || 'Sans titre' }}
             </h1>
-            
+
             <div class="flex flex-wrap items-center gap-4 text-xs text-muted-foreground font-mono">
               <span class="flex items-center gap-1">
                 <Calendar class="size-3.5" />
@@ -99,7 +96,6 @@ onMounted(() => {
               </span>
             </div>
 
-            <!-- Tags -->
             <div v-if="note.tags && note.tags.length > 0" class="flex flex-wrap gap-1.5 pt-2">
               <span
                 v-for="tag in note.tags"
@@ -112,7 +108,6 @@ onMounted(() => {
             </div>
           </header>
 
-          <!-- Content rendered using WYSIWYG note classes/styling -->
           <div class="note-public-content min-h-[200px] text-foreground leading-relaxed break-words" v-html="note.content">
           </div>
         </div>

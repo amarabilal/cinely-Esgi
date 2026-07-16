@@ -143,18 +143,18 @@ class SlashCommandMenu {
     this.root.style.maxHeight = '20rem';
     this.root.style.overflowY = 'auto';
     this.root.style.minWidth = '14rem';
-    // Subtle fade/scale-in: start hidden, reveal on the next frame (see mount()).
+
     this.root.style.transformOrigin = 'top';
     this.root.style.opacity = '0';
     this.root.style.transform = 'translateY(-4px) scale(0.98)';
     this.root.style.transition = 'opacity 0.12s ease, transform 0.12s ease';
-    // Prevent the editor from losing the selection on mousedown.
+
     this.root.addEventListener('mousedown', (e) => e.preventDefault());
   }
 
   mount() {
     document.body.appendChild(this.root);
-    // Trigger the enter transition once the element is in the DOM.
+
     requestAnimationFrame(() => {
       this.root.style.opacity = '1';
       this.root.style.transform = 'none';
@@ -212,7 +212,7 @@ class SlashCommandMenu {
     if (!clientRect) return;
     const rect = clientRect();
     if (!rect) return;
-    // Render below the caret by default; flip above if it would overflow.
+
     const menuHeight = this.root.offsetHeight || 240;
     const spaceBelow = window.innerHeight - rect.bottom;
     const top =
@@ -262,7 +262,7 @@ export const SlashCommand = Extension.create({
         char: '/',
         startOfLine: false,
         command: ({ editor, range, props }) => {
-          // `props` is the selected SlashCommandItem; run its action.
+
           (props as SlashCommandItem).action({ editor, range });
         },
         items: ({ query }) => filterItems(query),

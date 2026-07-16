@@ -11,11 +11,11 @@ Application de prise de notes avancée avec éditeur WYSIWYG, collaboration temp
 
 ## Contributeurs
 
-| Pseudo GitHub | Rôle |
-|---|---|
-| [amarabilal](https://github.com/amarabilal) | Backend · Infrastructure K3s · CI/CD · Auth · 2FA |
-| [duongdk099](https://github.com/duongdk099) | Frontend · Design System · Éditeur TipTap · Collaboration temps réel |
-| [duyanhnguyen0809](https://github.com/duyanhnguyen0809) | Backend · Modules Notes · Stripe · Tests |
+| Nom | Pseudo GitHub | Rôle |
+|-----|---------------|------|
+| Bilal Amara | [amarabilal](https://github.com/amarabilal) | Backend · Infrastructure K3s · CI/CD · Auth · 2FA |
+| Tung Duong PHAM | [duongdk099](https://github.com/duongdk099) | Frontend · Design System · Éditeur TipTap · Collaboration temps réel |
+| Duy Anh NGUYEN | [duyanhnguyen0809](https://github.com/duyanhnguyen0809) | Backend · Modules Notes · Stripe · Tests |
 
 ---
 
@@ -61,7 +61,7 @@ cp .env.example .env
 # Les variables DB_HOST, REDIS_HOST, MAIL_HOST sont injectées automatiquement par Docker Compose
 
 # 3. Démarrer tous les services
-docker-compose up
+docker-compose up --build
 ```
 
 L'application est accessible sur :

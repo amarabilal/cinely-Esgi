@@ -107,7 +107,6 @@ async function handleCreateFolder() {
           Filters
         </h2>
 
-        <!-- Library -->
         <section class="space-y-1">
           <p class="px-1 py-1 font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             Library
@@ -130,7 +129,6 @@ async function handleCreateFolder() {
           </button>
         </section>
 
-        <!-- Folders -->
         <section class="mt-5 space-y-1">
           <p class="px-1 py-1 font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             Folders
@@ -163,7 +161,6 @@ async function handleCreateFolder() {
           </form>
         </section>
 
-        <!-- Tags -->
         <section class="mt-5 space-y-1">
           <div class="flex items-center justify-between px-1 py-1">
             <p class="font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">

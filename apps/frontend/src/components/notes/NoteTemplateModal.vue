@@ -156,7 +156,7 @@ async function selectTemplate(template: NoteTemplate) {
           class="relative w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-2xl"
           @click.stop
         >
-          <!-- Header -->
+
           <div class="flex items-center justify-between mb-5">
             <div>
               <h2 class="text-lg font-semibold text-foreground">Create a new note</h2>
@@ -167,7 +167,6 @@ async function selectTemplate(template: NoteTemplate) {
             </Button>
           </div>
 
-          <!-- Template grid -->
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <button
               v-for="t in templates"

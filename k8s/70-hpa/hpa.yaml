@@ -1,5 +1,3 @@
-# HorizontalPodAutoscaler — Backend
-# Scale automatiquement entre 2 et 6 replicas si CPU > 70%
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -26,8 +24,6 @@ spec:
           type: Utilization
           averageUtilization: 80
 ---
-# HorizontalPodAutoscaler — Frontend
-# Scale automatiquement entre 3 et 9 replicas si CPU > 70%
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

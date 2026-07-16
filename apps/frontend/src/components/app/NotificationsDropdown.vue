@@ -64,7 +64,6 @@ onMounted(() => {
   document.addEventListener('click', handleClickOutside);
   store.fetchNotifications();
 
-  // Listen to real-time notification socket updates
   const token = localStorage.getItem('accessToken');
   if (token) {
     noteSync.connect(token);
@@ -108,7 +107,7 @@ onBeforeUnmount(() => {
         v-if="isOpen"
         class="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
       >
-        <!-- Header -->
+
         <div class="flex items-center justify-between border-b border-border bg-muted/20 px-4 py-2.5">
           <span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notifications</span>
           <button
@@ -121,7 +120,6 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
-        <!-- Notification List -->
         <div class="max-h-72 overflow-y-auto divide-y divide-border scrollbar-thin">
           <div v-if="store.notifications.length === 0" class="flex flex-col items-center justify-center p-8 text-center">
             <Inbox class="size-8 text-muted-foreground/50 mb-2" />
@@ -144,14 +142,12 @@ onBeforeUnmount(() => {
                 </span>
               </div>
 
-              <!-- Unread dot -->
               <span
                 v-if="!n.read"
                 class="absolute right-3 top-4 size-2 rounded-full bg-primary"
                 title="Non lu"
               />
 
-              <!-- Delete Action -->
               <button
                 type="button"
                 class="absolute bottom-2.5 right-3 opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"

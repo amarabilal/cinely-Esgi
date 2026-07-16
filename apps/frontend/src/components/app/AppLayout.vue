@@ -23,21 +23,18 @@ onMounted(async () => {
   try {
     const raw = localStorage.getItem(SIDEBAR_KEY);
     if (raw !== null) sidebarCollapsed.value = raw === 'true';
-  } catch { /* ignore */ }
+  } catch {  }
 
   if (!auth.user) await auth.fetchMe().catch(() => { void auth.clearAuth(); });
   await Promise.all([store.fetchFolders(), store.fetchTags()]);
 
-  // Register for push notifications (no-op on web; degrades gracefully when
-  // FCM isn't configured yet). AppLayout is an auth-gated shell, so the user
-  // is authenticated here and the POST /devices call carries a valid Bearer.
   void usePush().initPush(router);
 });
 
 watch(sidebarCollapsed, (value) => {
   try {
     localStorage.setItem(SIDEBAR_KEY, String(value));
-  } catch { /* ignore */ }
+  } catch {  }
 });
 
 async function newNote() {
@@ -46,9 +43,7 @@ async function newNote() {
 }
 
 async function logout() {
-  // Unregister this device BEFORE clearing auth so the DELETE /devices/:token
-  // call still carries a valid Bearer (no-op on web). Best-effort: failures are
-  // swallowed inside disablePush and must not block sign-out.
+
   await usePush().disablePush();
   await auth.logout();
   void router.push('/login');
@@ -71,14 +66,7 @@ async function logout() {
         @logout="logout"
       />
       <main class="min-w-0 flex-1 overflow-hidden">
-        <!-- Navigation between app views (overview ↔ editor ↔ search ↔
-             dashboard ↔ settings) crossfades via the View Transitions API
-             (router beforeResolve guard). No :key remount → the editor keeps
-             its realtime socket across note→note navigations.
 
-             On mobile, the fixed bottom tab bar (~4rem + safe area) overlays
-             the content, so the scroll container gets matching bottom padding
-             to let content clear it. Desktop has no tab bar → no padding. -->
         <router-view v-slot="{ Component }">
           <component
             :is="Component"

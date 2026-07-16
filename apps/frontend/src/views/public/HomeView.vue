@@ -17,7 +17,7 @@ const features = [
 
 <template>
   <PublicLayout>
-    <!-- Hero -->
+
     <section class="mx-auto max-w-4xl px-6 py-24 text-center sm:py-32">
       <h1 class="text-balance text-4xl font-bold leading-tight tracking-tight text-foreground sm:text-5xl">
         Your thoughts, organized.<br />
@@ -33,7 +33,6 @@ const features = [
       </div>
     </section>
 
-    <!-- Features grid -->
     <section class="border-t border-border/60 bg-muted/40 px-6 py-20">
       <div class="mx-auto max-w-5xl">
         <h2 class="text-center text-3xl font-bold tracking-tight text-foreground">Everything you need</h2>

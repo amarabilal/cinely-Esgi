@@ -14,7 +14,7 @@ export interface NotebookMessage {
   notebookId: string;
   role: 'user' | 'assistant';
   content: string;
-  citations: string | null; // JSON string (array of citations)
+  citations: string | null;
   createdAt: string;
 }
 
@@ -30,10 +30,10 @@ export const notebooksApi = {
   create: (title: string) => client.post<Notebook>('/notebooks', { title }),
   update: (id: string, title: string) => client.patch<Notebook>(`/notebooks/${id}`, { title }),
   remove: (id: string) => client.delete(`/notebooks/${id}`),
-  
+
   addNote: (id: string, noteId: string) => client.post<Notebook>(`/notebooks/${id}/notes/${noteId}`),
   removeNote: (id: string, noteId: string) => client.delete<Notebook>(`/notebooks/${id}/notes/${noteId}`),
-  
+
   getMessages: (id: string) => client.get<NotebookMessage[]>(`/notebooks/${id}/messages`),
   chat: (id: string, payload: { query: string; activeSourceIds?: string[] }) =>
     client.post<{ userMessage: NotebookMessage; assistantMessage: NotebookMessage }>(`/notebooks/${id}/chat`, payload),

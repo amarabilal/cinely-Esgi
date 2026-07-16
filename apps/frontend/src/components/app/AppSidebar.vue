@@ -53,14 +53,12 @@ const dragOverFolderId = ref<string | null>(null);
 const tagManagerOpen = ref(false);
 const templateModalOpen = ref(false);
 
-// Per-folder inline action state.
 const renamingFolderId = ref<string | null>(null);
 const renameFolderName = ref('');
 const confirmingDeleteFolderId = ref<string | null>(null);
 const subfolderParentId = ref<string | null>(null);
 const subfolderName = ref('');
 
-// Function ref: auto-focus the inline input as soon as it mounts.
 function focusInlineInput(el: unknown) {
   if (el instanceof HTMLInputElement) el.focus();
 }
@@ -469,7 +467,7 @@ function handleTagDragStart(event: DragEvent, tag: { id: string; name: string })
             No folders yet
           </div>
           <div v-for="folder in folders" :key="folder.id" class="space-y-1">
-            <!-- Inline rename mode -->
+
             <div
               v-if="renamingFolderId === folder.id && !isCollapsed"
               class="flex items-center gap-1.5 px-1"
@@ -486,7 +484,6 @@ function handleTagDragStart(event: DragEvent, tag: { id: string; name: string })
               >
             </div>
 
-            <!-- Folder row (drop target) + hover actions as siblings (no nested buttons) -->
             <div v-else class="group/folder relative">
               <button
                 type="button"
@@ -518,7 +515,6 @@ function handleTagDragStart(event: DragEvent, tag: { id: string; name: string })
                 </span>
               </button>
 
-              <!-- Hover actions: positioned over the row, siblings of the button -->
               <span
                 v-if="dragOverFolderId !== folder.id && !isCollapsed"
                 class="pointer-events-none absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-md bg-accent/60 opacity-0 transition-opacity group-hover/folder:pointer-events-auto group-hover/folder:opacity-100"
@@ -556,7 +552,6 @@ function handleTagDragStart(event: DragEvent, tag: { id: string; name: string })
               </span>
             </div>
 
-            <!-- Inline delete confirm -->
             <div
               v-if="confirmingDeleteFolderId === folder.id && !isCollapsed"
               class="flex items-center justify-between gap-2 rounded-md border bg-muted px-2 py-1.5"
@@ -582,7 +577,6 @@ function handleTagDragStart(event: DragEvent, tag: { id: string; name: string })
               </span>
             </div>
 
-            <!-- Inline subfolder create -->
             <div
               v-if="subfolderParentId === folder.id && !isCollapsed"
               class="flex items-center gap-1.5 pl-4 pr-1"

@@ -25,12 +25,11 @@ async function pickImageFile(): Promise<File | null> {
       const ext = photo.format || (blob.type.split('/')[1] ?? 'jpg');
       return new File([blob], `photo.${ext}`, { type: blob.type });
     } catch {
-      // User cancelled the camera/gallery prompt — not an error worth surfacing.
+
       return null;
     }
   }
 
-  // Web: hidden file input. Resolves with the chosen file or null if dismissed.
   return new Promise<File | null>((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -48,8 +47,7 @@ async function pickImageFile(): Promise<File | null> {
       resolve(file);
     };
     input.addEventListener('change', () => finish(input.files?.[0] ?? null));
-    // If the dialog is dismissed there is no `change` event; the window regains
-    // focus instead. Defer so a real `change` (which also refocuses) wins.
+
     const onFocus = () => setTimeout(() => finish(null), 300);
     window.addEventListener('focus', onFocus, { once: true });
     document.body.appendChild(input);
@@ -64,7 +62,7 @@ async function pickImageFile(): Promise<File | null> {
  */
 export async function pickAndInsertImage(editor: Editor): Promise<void> {
   const file = await pickImageFile();
-  if (!file) return; // user cancelled
+  if (!file) return;
 
   const toastId = toast.loading('Uploading image…');
   try {

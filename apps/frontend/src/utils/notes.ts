@@ -1,5 +1,3 @@
-// Note display helpers — ported from cluster-offline's front/utils/notes.ts and
-// adapted to cinely (note content is an HTML string; no Nuxt runtime config).
 
 /** Human-friendly relative time: "Just now", "5m ago", "3h ago", "2d ago", or a date. */
 export function formatRelativeTime(date: string | Date): string {

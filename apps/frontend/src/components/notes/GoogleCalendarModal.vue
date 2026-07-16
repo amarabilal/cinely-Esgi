@@ -17,10 +17,10 @@ function formatDateTimeLocal(date: Date) {
 watch(open, async (o) => {
   if (!o) return;
   const now = new Date();
-  // Set start to next hour
+
   const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + 1, 0, 0);
-  const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour duration
-  
+  const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+
   start.value = formatDateTimeLocal(startDate);
   end.value = formatDateTimeLocal(endDate);
 });
@@ -70,7 +70,7 @@ function onKeydown(e: KeyboardEvent) {
                 class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
-            
+
             <div class="space-y-1.5">
               <label for="event-end" class="text-sm font-medium text-foreground">End Date &amp; Time</label>
               <input

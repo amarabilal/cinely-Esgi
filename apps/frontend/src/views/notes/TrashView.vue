@@ -97,7 +97,7 @@ async function handleEmptyTrash() {
           :key="note.id"
           class="group flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent/40"
         >
-          <!-- Note info -->
+
           <div class="min-w-0 flex-1">
             <h3 class="truncate text-sm font-medium text-foreground">
               {{ note.title || 'Untitled' }}
@@ -110,7 +110,6 @@ async function handleEmptyTrash() {
             </p>
           </div>
 
-          <!-- Actions -->
           <div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
               variant="ghost"

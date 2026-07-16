@@ -13,11 +13,10 @@ const events = ref<any[]>([]);
 
 const currentDate = new Date();
 const currentYear = ref(currentDate.getFullYear());
-const currentMonth = ref(currentDate.getMonth()); // 0-indexed
+const currentMonth = ref(currentDate.getMonth());
 
 const selectedEvent = ref<any | null>(null);
 
-// Calendar navigation helpers
 const monthName = computed(() => {
   const date = new Date(currentYear.value, currentMonth.value, 1);
   const raw = date.toLocaleString('fr-FR', { month: 'long' });
@@ -26,20 +25,17 @@ const monthName = computed(() => {
 
 const weekdays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-// Generate calendar cells (Monday to Sunday structure)
 const calendarDays = computed(() => {
   const firstDayOfMonth = new Date(currentYear.value, currentMonth.value, 1);
   const lastDayOfMonth = new Date(currentYear.value, currentMonth.value + 1, 0);
-  
-  // Day of week for first day (0 = Sunday, 1 = Monday, etc.)
+
   let startDayOfWeek = firstDayOfMonth.getDay();
-  // Adjust so Monday is 0, Sunday is 6
+
   startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
 
   const totalDaysInMonth = lastDayOfMonth.getDate();
   const days: { date: Date; isCurrentMonth: boolean; isToday: boolean; key: string }[] = [];
 
-  // Previous month padding days
   const prevMonthLastDay = new Date(currentYear.value, currentMonth.value, 0).getDate();
   for (let i = startDayOfWeek - 1; i >= 0; i--) {
     const dayDate = new Date(currentYear.value, currentMonth.value - 1, prevMonthLastDay - i);
@@ -51,7 +47,6 @@ const calendarDays = computed(() => {
     });
   }
 
-  // Active month days
   for (let i = 1; i <= totalDaysInMonth; i++) {
     const dayDate = new Date(currentYear.value, currentMonth.value, i);
     days.push({
@@ -62,7 +57,6 @@ const calendarDays = computed(() => {
     });
   }
 
-  // Next month padding days to make grid always multiple of 7
   const nextMonthPadding = 42 - days.length;
   for (let i = 1; i <= nextMonthPadding; i++) {
     const dayDate = new Date(currentYear.value, currentMonth.value + 1, i);
@@ -105,8 +99,7 @@ async function fetchEvents() {
     return;
   }
   loading.value = true;
-  
-  // Calculate bounds based on generated grid range
+
   const firstGridDate = calendarDays.value[0].date;
   const lastGridDate = calendarDays.value[calendarDays.value.length - 1].date;
 
@@ -128,20 +121,19 @@ async function fetchEvents() {
   }
 }
 
-// Group events by day representation YYYY-MM-DD
 const eventsByDay = computed(() => {
   const map: Record<string, any[]> = {};
-  
+
   events.value.forEach(event => {
-    // start date can be dateTime or date (all day events)
+
     const dateStr = event.start.dateTime || event.start.date;
     if (!dateStr) return;
-    
+
     const dayKey = dateStr.split('T')[0];
     if (!map[dayKey]) map[dayKey] = [];
     map[dayKey].push(event);
   });
-  
+
   return map;
 });
 
@@ -175,7 +167,6 @@ onMounted(async () => {
   await fetchEvents();
 });
 
-// Event time range formatting
 function formatEventTime(event: any) {
   if (event.start.date) return 'Toute la journée';
   const start = new Date(event.start.dateTime);
@@ -191,24 +182,21 @@ function selectEvent(event: any) {
 
 <template>
   <div class="h-full flex flex-col min-h-0 flex-1 bg-background text-foreground overflow-hidden">
-    <!-- Header -->
+
     <header class="shrink-0 border-b border-border bg-background px-6 py-4 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <CalendarIcon class="size-5 text-primary" />
         <h1 class="text-xl font-semibold tracking-tight">Mon Calendrier</h1>
       </div>
-      
-      <!-- Connected State Banner -->
+
       <div v-if="googleConnected" class="flex items-center gap-2">
         <div class="size-2 rounded-full bg-green-500 animate-pulse"></div>
         <span class="text-xs font-medium text-muted-foreground">Google Calendar synchronisé</span>
       </div>
     </header>
 
-    <!-- Main Content Area -->
     <div class="flex-1 min-h-0 overflow-y-auto p-6">
-      
-      <!-- Unconnected onboarding screen -->
+
       <div v-if="!googleConnected" class="max-w-md mx-auto my-12 bg-card border border-border rounded-xl p-6 text-center space-y-4 shadow-sm">
         <div class="flex justify-center">
           <div class="p-3 bg-primary/10 rounded-full text-primary">
@@ -226,9 +214,8 @@ function selectEvent(event: any) {
         </div>
       </div>
 
-      <!-- Calendar grid (if connected) -->
       <div v-else class="h-full flex flex-col space-y-4">
-        <!-- Month controls -->
+
         <div class="flex items-center justify-between">
           <h2 class="text-lg font-semibold text-foreground tracking-tight">{{ monthName }}</h2>
           <div class="flex items-center gap-1">
@@ -241,9 +228,8 @@ function selectEvent(event: any) {
           </div>
         </div>
 
-        <!-- Monthly Grid -->
         <div class="flex-1 border border-border rounded-xl bg-card overflow-hidden flex flex-col min-h-[500px]">
-          <!-- Weekdays header -->
+
           <div class="grid grid-cols-7 border-b border-border bg-muted/40">
             <div
               v-for="day in weekdays" :key="day"
@@ -253,7 +239,6 @@ function selectEvent(event: any) {
             </div>
           </div>
 
-          <!-- Calendar days grid -->
           <div class="flex-1 grid grid-cols-7 grid-rows-6 min-h-0">
             <div
               v-for="cell in calendarDays" :key="cell.key"
@@ -263,7 +248,7 @@ function selectEvent(event: any) {
                 cell.isToday ? 'bg-primary/5' : ''
               ]"
             >
-              <!-- Day Header -->
+
               <div class="flex justify-between items-center p-1">
                 <span
                   class="text-xs font-medium text-muted-foreground flex size-5 items-center justify-center rounded-full"
@@ -273,13 +258,12 @@ function selectEvent(event: any) {
                 </span>
               </div>
 
-              <!-- Day events list -->
               <div class="flex-1 overflow-y-auto space-y-1 p-0.5 scrollbar-none min-h-0">
-                <!-- Skeleton loader -->
+
                 <template v-if="loading">
                   <div class="h-4 bg-muted animate-pulse rounded" />
                 </template>
-                
+
                 <template v-else>
                   <button
                     v-for="event in eventsByDay[getDayKey(cell.date)]" :key="event.id"
@@ -301,7 +285,6 @@ function selectEvent(event: any) {
       </div>
     </div>
 
-    <!-- Event details modal -->
     <Teleport to="body">
       <Transition name="modal">
         <div
@@ -314,7 +297,7 @@ function selectEvent(event: any) {
             role="dialog"
             aria-modal="true"
           >
-            <!-- Modal Header -->
+
             <div class="flex items-center justify-between border-b border-border px-4 py-3">
               <div class="flex items-center gap-2 text-sm font-semibold">
                 <CalendarIcon class="size-4 text-primary" />
@@ -325,7 +308,6 @@ function selectEvent(event: any) {
               </button>
             </div>
 
-            <!-- Modal Content -->
             <div class="p-5 space-y-4">
               <div>
                 <h3 class="text-base font-semibold text-foreground tracking-tight">
@@ -333,7 +315,6 @@ function selectEvent(event: any) {
                 </h3>
               </div>
 
-              <!-- Time -->
               <div class="flex items-start gap-2.5 text-sm">
                 <Clock class="size-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
@@ -346,19 +327,16 @@ function selectEvent(event: any) {
                 </div>
               </div>
 
-              <!-- Location (if exists) -->
               <div v-if="selectedEvent.location" class="flex items-start gap-2.5 text-sm">
                 <MapPin class="size-4 text-muted-foreground mt-0.5 shrink-0" />
                 <p class="text-foreground font-medium">{{ selectedEvent.location }}</p>
               </div>
 
-              <!-- Description (if exists) -->
               <div v-if="selectedEvent.description" class="bg-muted/40 border rounded-lg p-3 text-xs text-muted-foreground space-y-1">
                 <p class="font-medium text-foreground">Description :</p>
                 <p class="whitespace-pre-wrap leading-relaxed">{{ selectedEvent.description }}</p>
               </div>
 
-              <!-- Action buttons -->
               <div class="flex items-center gap-2 pt-2 border-t border-border">
                 <Button variant="outline" size="sm" class="ml-auto" @click="selectedEvent = null">
                   Fermer

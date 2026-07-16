@@ -25,9 +25,9 @@ export class CommentsService {
       content,
       parentId: parentId || null,
     });
-    
+
     const saved = await this.commentRepository.save(comment);
-    // Reload to populate the user relation
+
     return this.commentRepository.findOne({
       where: { id: saved.id },
       relations: ['user'],

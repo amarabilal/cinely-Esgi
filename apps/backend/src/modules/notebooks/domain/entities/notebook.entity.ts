@@ -4,7 +4,7 @@ import {
   ManyToMany, JoinTable, OneToMany
 } from 'typeorm';
 import { Note } from '../../../notes/domain/entities/note.entity';
-import { NotebookMessage } from './notebook-message.entity'; // IDE Ref
+import { NotebookMessage } from './notebook-message.entity';
 
 @Entity('notebooks')
 export class Notebook {

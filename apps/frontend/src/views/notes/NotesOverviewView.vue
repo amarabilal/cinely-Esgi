@@ -19,10 +19,8 @@ const store = useNotesStore();
 const statFilter = ref<OverviewFilter>('all');
 const templateModalOpen = ref(false);
 
-// Whether the current route targets shared-with-me notes.
 const isShared = computed(() => route.query.filter === 'shared');
 
-// Derive the server-side query + header from the route.
 const derived = computed<{ query: NoteQuery; title: string }>(() => {
   if (route.path === '/notes/archived') {
     return { query: { archived: true }, title: 'Archived' };
@@ -48,7 +46,6 @@ const derived = computed<{ query: NoteQuery; title: string }>(() => {
 
 const headerTitle = computed(() => derived.value.title);
 
-// The full list returned from the server for the active query.
 const displayedNotes = computed<Note[]>(() =>
   isShared.value ? store.sharedNotes : store.notes,
 );
@@ -73,7 +70,6 @@ const stats = computed(() => [
   { label: 'Today', value: todayCount.value, icon: Clock, filter: 'today' as const },
 ]);
 
-// Client-side narrowing of the visible grid via the stat cards.
 const visibleNotes = computed<Note[]>(() => {
   if (statFilter.value === 'all') return displayedNotes.value;
   const now = new Date();
@@ -107,7 +103,6 @@ function openNote(note: Note) {
   router.push(`/notes/${note.id}`);
 }
 
-// ---- Mobile-only filter affordances (md:hidden) ----
 const filterSheetOpen = ref(false);
 
 const selectedFilter = computed(() => (typeof route.query.filter === 'string' ? route.query.filter : ''));
@@ -143,7 +138,7 @@ function goArchived() {
 
 <template>
   <div class="mx-auto w-full max-w-6xl space-y-6 overflow-y-auto p-4 sm:p-6">
-    <!-- Mobile-only filter chips (desktop relies on the sidebar). -->
+
     <div class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none md:hidden">
       <button type="button" :class="chipClass(chipAll)" @click="goAll">
         All
@@ -192,7 +187,7 @@ function goArchived() {
     </template>
 
     <template v-else>
-      <!-- Stat cards (Total / This week / Today) are desktop-only; hidden on mobile to declutter. -->
+
       <div class="hidden gap-3 md:grid md:grid-cols-3">
         <button
           v-for="stat in stats"

@@ -181,7 +181,6 @@ export class AuthService {
     const user = await this.userRepository.findByEmail(email);
     if (!user) return;
 
-    // Invalidate all previous unused tokens before creating a new one
     await this.resetTokenRepository.update(
       { userId: user.id, usedAt: null },
       { usedAt: new Date() },

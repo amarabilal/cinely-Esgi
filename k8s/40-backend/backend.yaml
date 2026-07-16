@@ -149,7 +149,6 @@ spec:
                 secretKeyRef:
                   name: app-secret
                   key: STRIPE_PLAN_NAME
-          # Chemin /api/health — global prefix 'api' défini dans main.ts
           readinessProbe:
             httpGet:
               path: /api/health

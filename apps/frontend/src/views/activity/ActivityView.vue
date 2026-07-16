@@ -80,7 +80,7 @@ onMounted(() => {
 
 <template>
   <div class="flex h-full flex-col bg-background p-6 overflow-hidden">
-    <!-- Header -->
+
     <div class="mb-6 shrink-0">
       <h1 class="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
         <Clock class="size-6 text-primary" />
@@ -91,7 +91,6 @@ onMounted(() => {
       </p>
     </div>
 
-    <!-- Main Content Area -->
     <div class="flex-1 overflow-y-auto scrollbar-thin rounded-xl border border-border bg-card shadow-sm p-6">
       <div v-if="activities.length === 0 && !loading" class="flex flex-col items-center justify-center py-20 text-center">
         <Inbox class="size-12 text-muted-foreground/45 mb-4 animate-bounce" />
@@ -107,7 +106,7 @@ onMounted(() => {
           :key="item.id"
           class="relative mb-6 last:mb-0 group"
         >
-          <!-- Icon Badge Marker -->
+
           <div
             class="absolute -left-[27px] top-0 flex size-6 items-center justify-center rounded-full border shadow-sm transition-transform duration-200 group-hover:scale-110"
             :class="getActionStyle(item.action).color"
@@ -115,7 +114,6 @@ onMounted(() => {
             <component :is="getActionStyle(item.action).icon" class="size-3" />
           </div>
 
-          <!-- Log Card -->
           <div class="rounded-lg border border-border/60 bg-muted/20 p-4 transition-colors hover:bg-muted/30">
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0 flex-1">
@@ -123,7 +121,7 @@ onMounted(() => {
                   {{ getActionStyle(item.action).label }}
                 </span>
                 <p class="text-sm font-medium text-foreground leading-relaxed">
-                  <!-- Custom log sentences -->
+
                   <template v-if="item.action === 'CREATE'">
                     Vous avez créé la note <span class="font-semibold text-primary">"{{ item.metadata?.title || 'Sans titre' }}"</span>.
                   </template>
@@ -154,7 +152,6 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- Load More Button -->
         <div v-if="hasMore" class="flex justify-center pt-4">
           <Button
             variant="outline"

@@ -10,7 +10,7 @@ const message = ref('');
 const sent = ref(false);
 
 function submit() {
-  // Static form — no backend endpoint. Shown as-is for SEO / demo purposes.
+
   sent.value = true;
 }
 </script>

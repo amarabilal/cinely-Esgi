@@ -25,7 +25,7 @@ onMounted(async () => {
 async function handleCreate() {
   const title = newTitle.value.trim();
   if (!title) return;
-  
+
   isSubmitting.value = true;
   try {
     const notebook = await store.createNotebook(title);
@@ -62,7 +62,7 @@ function formatDate(dateStr: string) {
 <template>
   <div class="h-full overflow-y-auto bg-background text-foreground scrollbar-thin">
     <div class="mx-auto max-w-5xl px-6 py-8">
-      <!-- Page Header -->
+
       <header class="mb-8 flex items-center justify-between">
         <div>
           <p class="font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">AI Studio</p>
@@ -77,12 +77,10 @@ function formatDate(dateStr: string) {
         </Button>
       </header>
 
-      <!-- Loading State -->
       <div v-if="store.isLoading && store.notebooks.length === 0" class="flex items-center justify-center h-64">
         <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
       </div>
 
-      <!-- Empty State -->
       <div v-else-if="store.notebooks.length === 0" class="flex flex-col items-center justify-center border border-dashed rounded-xl p-12 text-center bg-card/30">
         <Brain class="size-12 text-muted-foreground mb-4 opacity-50" />
         <h3 class="text-lg font-semibold text-foreground">No workspaces yet</h3>
@@ -95,7 +93,6 @@ function formatDate(dateStr: string) {
         </Button>
       </div>
 
-      <!-- Grid of Notebooks -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card
           v-for="notebook in store.notebooks"
@@ -118,7 +115,7 @@ function formatDate(dateStr: string) {
                 <Trash2 class="size-4" />
               </Button>
             </div>
-            
+
             <h2 class="text-base font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
               {{ notebook.title }}
             </h2>
@@ -128,7 +125,7 @@ function formatDate(dateStr: string) {
               <span>Updated {{ formatDate(notebook.updatedAt) }}</span>
             </p>
           </div>
-          
+
           <div class="mt-6 border-t pt-3 flex items-center justify-end">
             <span class="text-xs font-semibold text-primary group-hover:translate-x-1 transition-transform flex items-center gap-1">
               Open Workspace
@@ -139,13 +136,12 @@ function formatDate(dateStr: string) {
       </div>
     </div>
 
-    <!-- Create Dialog Modal -->
     <div v-if="isCreateModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs px-4" @click.self="isCreateModalOpen = false">
       <div class="w-full max-w-md bg-card border rounded-xl shadow-xl p-6 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <button @click="isCreateModalOpen = false" class="absolute right-4 top-4 text-muted-foreground hover:text-foreground hover:bg-muted p-1 rounded-md transition-colors">
           <X class="size-4" />
         </button>
-        
+
         <h2 class="text-lg font-semibold text-foreground flex items-center gap-2">
           <Sparkles class="size-5 text-primary" />
           Create Research Workspace
@@ -168,7 +164,7 @@ function formatDate(dateStr: string) {
               v-focus
             />
           </div>
-          
+
           <div class="flex justify-end gap-2.5">
             <Button type="button" variant="outline" @click="isCreateModalOpen = false" :disabled="isSubmitting">
               Cancel
@@ -185,5 +181,4 @@ function formatDate(dateStr: string) {
 </template>
 
 <style scoped>
-/* Focus directive setup helper */
 </style>

@@ -46,10 +46,8 @@ const showVersions = ref(false);
 const showShares = ref(false);
 const isSuggestingTitle = ref(false);
 
-// Prevent re-broadcasting remote updates
 let isApplyingRemote = false;
 
-// ── Tiptap editor ──────────────────────────────────────────────
 const editor = useEditor({
   extensions: [
     ...richTextExtensions(),
@@ -72,14 +70,12 @@ const editor = useEditor({
   },
 });
 
-// Keep editor editable state in sync with permission
 watch(
   () => store.canEdit,
   (editable) => { editor.value?.setEditable(editable); },
   { immediate: true },
 );
 
-// Keep remote cursors in sync with the editor (sync flush = same frame as cursor change)
 watch(
   noteSync.remoteCursors,
   (cursors) => {
@@ -88,7 +84,6 @@ watch(
   { deep: true, flush: 'sync' },
 );
 
-// ── Register real-time handlers ────────────────────────────────
 const unsubscribeUpdate = noteSync.onNoteUpdate((payload) => {
   if (payload.userId === auth.user?.id) return;
   if (payload.noteId !== store.currentNote?.id) {
@@ -101,11 +96,10 @@ const unsubscribeUpdate = noteSync.onNoteUpdate((payload) => {
   if (editor.value) {
     const wasEditable = editor.value.isEditable;
     if (!wasEditable) editor.value.setEditable(true, false);
-    // Prefer JSON (lossless, exact positions) over HTML (whitespace may be normalized)
+
     editor.value.commands.setContent(payload.json ?? payload.content, false);
     if (!wasEditable) editor.value.setEditable(false, false);
-    // Apply cursor synchronously in the same JS task — both ProseMirror dispatches
-    // happen before the browser paints, so cursor and content update atomically
+
     if (editor.value.view) {
       setCursors(editor.value.view, noteSync.remoteCursors.value);
     }
@@ -115,10 +109,10 @@ const unsubscribeUpdate = noteSync.onNoteUpdate((payload) => {
 
 const unsubscribePermission = noteSync.onPermissionChanged((payload) => {
   if (payload.userId !== auth.user?.id) return;
-  // Updating the store triggers the canEdit watcher which calls setEditable
+
   store.notePermissions[payload.noteId] = payload.permission;
   if (store.currentNote?.id === payload.noteId && payload.permission === 'WRITE') {
-    // Focus is required so the browser registers the new contenteditable state
+
     nextTick(() => editor.value?.commands.focus());
   }
 });
@@ -156,7 +150,6 @@ const unsubscribeArchived = noteSync.onNoteArchived((payload) => {
   store.applyNoteArchived(payload.noteId);
 });
 
-// ── Note loading by route param ────────────────────────────────
 async function loadNote(id: string) {
   noteSync.leaveNote();
   showVersions.value = false;
@@ -176,8 +169,6 @@ async function loadNote(id: string) {
   editor.value?.commands.setContent(note.content || '');
   editor.value?.setEditable(store.canEdit);
 
-  // Read the freshest token from localStorage (the refresh interceptor keeps it
-  // current) so the socket handshake never uses a stale access token.
   const token = getAccessToken();
   if (token) {
     await noteSync.joinNote(token, note.id);
@@ -190,8 +181,7 @@ onMounted(async () => {
   const token = getAccessToken();
   if (token) noteSync.connect(token);
   await loadNote(route.params.id as string);
-  // Lazily pull in syntax-highlighting grammars (separate async chunk) once the
-  // editor is up — keeps them out of the initial editor bundle.
+
   void loadCodeHighlighting(editor.value);
 });
 
@@ -211,7 +201,6 @@ onBeforeUnmount(() => {
   noteSync.disconnect();
 });
 
-// ── Save & sync ────────────────────────────────────────────────
 function scheduleSave(title: string, content: string) {
   if (!store.currentNote || !store.canEdit) return;
   if (saveTimer.value) clearTimeout(saveTimer.value);
@@ -223,8 +212,7 @@ function scheduleSave(title: string, content: string) {
 function scheduleSync(title: string, content: string) {
   if (!store.currentNote || !store.canEdit) return;
   const sel = editor.value?.state.selection;
-  // Send ProseMirror JSON (lossless) alongside HTML — JSON preserves all whitespace
-  // so cursor positions are always valid on the receiver side
+
   const json = editor.value?.getJSON();
   noteSync.emitUpdate(store.currentNote!.id, title, content, sel?.from, sel?.to, json);
 }
@@ -236,7 +224,6 @@ function onTitleInput() {
   scheduleSync(titleInput.value, content);
 }
 
-// ── AI suggest title ───────────────────────────────────────────
 async function suggestTitle() {
   if (!store.currentNote || isSuggestingTitle.value) return;
   const content = editor.value?.getHTML() ?? '';
@@ -253,7 +240,6 @@ async function suggestTitle() {
   }
 }
 
-// ── AI Tag Suggestion ─────────────────────────────────────────
 const suggestedTags = ref<string[]>([]);
 const isSuggestingTags = ref(false);
 
@@ -295,7 +281,6 @@ async function addSuggestedTag(tagName: string) {
   toast.success(`Tag #${tagName} added`);
 }
 
-// ── AI Summarization ──────────────────────────────────────────
 const isSummarizing = ref(false);
 const summaryText = ref('');
 const showSummaryPanel = ref(false);
@@ -320,7 +305,6 @@ async function summarizeCurrentNote() {
   }
 }
 
-// ── Version & share panels ─────────────────────────────────────
 function toggleVersions() {
   showVersions.value = !showVersions.value;
   showShares.value = false;
@@ -334,7 +318,6 @@ async function restore(versionId: string) {
   showVersions.value = false;
 }
 
-// ── Favorite / archive / delete ────────────────────────────────
 async function archiveCurrent() {
   if (!store.currentNote) return;
   await store.toggleArchive(store.currentNote.id);
@@ -360,7 +343,6 @@ async function duplicateCurrent() {
   }
 }
 
-// ── Tags / folder organisation (owner only) ────────────────────
 const currentTagIds = computed(() => store.currentNote?.tags.map(t => t.id) ?? []);
 
 async function handleTagSelect(tagId: string) {
@@ -384,9 +366,6 @@ async function handleFolderChange(folderId: string | null) {
   await store.updateNote(store.currentNote.id, { folderId });
 }
 
-// ── Format toolbar ─────────────────────────────────────────────
-// Lightweight reactive flag bumped on every selection/transaction so the
-// toolbar `isActive(...)` lookups re-evaluate. This does NOT touch save/sync.
 const editorTick = ref(0);
 watch(editor, (ed) => {
   if (!ed) return;
@@ -402,13 +381,12 @@ const currentAlignIcon = computed(() => {
   return AlignLeft;
 });
 
-// Toolbar helpers — all gated by store.canEdit at the call site / template.
 function run(fn: () => void) {
   if (!store.canEdit || !editor.value) return;
   fn();
 }
 const isActive = (name: string, attrs?: Record<string, unknown>) => {
-  editorTick.value; // dependency for reactivity
+  editorTick.value;
   return editor.value?.isActive(name, attrs) ?? false;
 };
 
@@ -417,7 +395,6 @@ const inTable = computed(() => {
   return editor.value?.isActive('table') ?? false;
 });
 
-// Link — handled via a proper modal (no window.prompt)
 const linkModalOpen = ref(false);
 const linkInitialUrl = ref('');
 
@@ -444,7 +421,6 @@ function unsetLink() {
   run(() => editor.value!.chain().focus().extendMarkRange('link').unsetLink().run());
 }
 
-// Color & highlight palettes
 const textColors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'];
 const highlightColors = ['#fef08a', '#bbf7d0', '#bfdbfe', '#fbcfe8', '#fed7aa', '#e9d5ff', '#fecaca', '#d1fae5'];
 const showColorMenu = ref(false);
@@ -467,20 +443,17 @@ function clearHighlight() {
   showHighlightMenu.value = false;
 }
 
-// Clear all formatting
 function clearFormatting() {
   run(() => editor.value!.chain().focus().unsetAllMarks().clearNodes().run());
 }
 
-// Image — capture/pick, upload, then insert (gated by canEdit).
 function insertImage() {
   if (!store.canEdit || !editor.value) return;
   void pickAndInsertImage(editor.value);
 }
 
-// ── Word count / reading time ──────────────────────────────────
 const wordCount = computed(() => {
-  editorTick.value; // reactivity
+  editorTick.value;
   const text = editor.value?.state.doc.textContent ?? '';
   const words = text.trim().split(/\s+/).filter(Boolean);
   return words.length;
@@ -495,20 +468,18 @@ const readingTime = computed(() => {
   const mins = Math.ceil(wordCount.value / 200);
   return mins < 1 ? '< 1 min' : `${mins} min`;
 });
-
 </script>
 
 <template>
   <div class="flex h-full min-h-0 flex-1 flex-col bg-background text-foreground overflow-hidden">
-    <!-- ── Top editor bar ──────────────────────────────── -->
+
     <header class="shrink-0 border-b border-border bg-background">
       <div class="flex flex-wrap items-center gap-2 px-3 py-2 md:px-4">
-        <!-- Back -->
+
         <Button variant="ghost" size="icon" title="Back to notes" @click="router.push('/notes')">
           <ArrowLeft class="size-4" />
         </Button>
 
-        <!-- Title -->
         <input
           v-model="titleInput"
           @input="onTitleInput"
@@ -517,9 +488,8 @@ const readingTime = computed(() => {
           class="min-w-0 flex-1 bg-transparent text-lg font-semibold tracking-tight outline-none placeholder:text-muted-foreground disabled:cursor-default disabled:opacity-70"
         />
 
-        <!-- Right actions -->
         <div class="flex items-center gap-1">
-          <!-- Live presence avatars -->
+
           <div v-if="noteSync.presentUsers.value.length" class="flex items-center -space-x-1 mr-1">
             <div
               v-for="u in noteSync.presentUsers.value" :key="u.userId"
@@ -530,11 +500,9 @@ const readingTime = computed(() => {
             </div>
           </div>
 
-          <!-- Permission badge -->
           <Badge v-if="store.currentPermission === 'READ'" variant="secondary">Read only</Badge>
           <Badge v-else-if="store.currentPermission === 'WRITE'">Can edit</Badge>
 
-          <!-- AI suggest title -->
           <Button
             variant="ghost" size="icon"
             :disabled="isSuggestingTitle || !store.canEdit"
@@ -544,7 +512,6 @@ const readingTime = computed(() => {
             <Sparkles class="size-4" :class="isSuggestingTitle ? 'animate-pulse' : ''" />
           </Button>
 
-          <!-- AI Summarize -->
           <Button
             variant="ghost" size="icon"
             :disabled="isSummarizing"
@@ -554,7 +521,6 @@ const readingTime = computed(() => {
             <FileText class="size-4" :class="isSummarizing ? 'animate-pulse' : ''" />
           </Button>
 
-          <!-- Version history -->
           <Button
             variant="ghost" size="icon" title="Version history"
             :class="showVersions ? 'bg-accent text-accent-foreground' : ''"
@@ -562,7 +528,6 @@ const readingTime = computed(() => {
             <History class="size-4" />
           </Button>
 
-          <!-- Comments -->
           <Button
             v-if="store.currentNote"
             variant="ghost" size="icon" title="Commentaires"
@@ -571,7 +536,6 @@ const readingTime = computed(() => {
             <MessageSquare class="size-4" />
           </Button>
 
-          <!-- Share / export (share with people, copy, markdown, print, system share) -->
           <ShareExportMenu
             v-if="store.currentNote"
             :note-id="store.currentNote.id"
@@ -582,7 +546,7 @@ const readingTime = computed(() => {
           />
 
           <template v-if="store.currentPermission === 'OWNER' && store.currentNote">
-            <!-- Pin -->
+
             <Button
               variant="ghost" size="icon"
               :title="store.currentNote.isPinned ? 'Unpin note' : 'Pin note'"
@@ -591,7 +555,6 @@ const readingTime = computed(() => {
               <Pin class="size-4" :class="store.currentNote.isPinned ? 'fill-primary' : ''" />
             </Button>
 
-            <!-- Favorite -->
             <Button
               variant="ghost" size="icon"
               :title="store.currentNote.isFavorite ? 'Remove from favorites' : 'Add to favorites'"
@@ -600,7 +563,6 @@ const readingTime = computed(() => {
               <Star class="size-4" :class="store.currentNote.isFavorite ? 'fill-primary' : ''" />
             </Button>
 
-            <!-- Archive -->
             <Button
               variant="ghost" size="icon"
               :title="store.currentNote.isArchived ? 'Unarchive' : 'Archive'"
@@ -608,7 +570,6 @@ const readingTime = computed(() => {
               <Archive class="size-4" />
             </Button>
 
-            <!-- Duplicate -->
             <Button
               variant="ghost" size="icon"
               title="Duplicate note"
@@ -616,13 +577,11 @@ const readingTime = computed(() => {
               <Copy class="size-4" />
             </Button>
 
-            <!-- Delete -->
             <Button variant="ghost" size="icon" title="Delete note" class="text-destructive" @click="deleteCurrent">
               <Trash2 class="size-4" />
             </Button>
           </template>
 
-          <!-- Save status + word count -->
           <span class="ml-1 text-xs text-muted-foreground whitespace-nowrap">
             {{ wordCount.toLocaleString() }} words · {{ readingTime }}
             <span class="mx-1 text-border">|</span>
@@ -631,7 +590,6 @@ const readingTime = computed(() => {
         </div>
       </div>
 
-      <!-- Tags + folder organisation (owner / can-edit only) -->
       <div
         v-if="store.currentPermission === 'OWNER' && store.currentNote"
         class="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-2 md:px-4">
@@ -673,7 +631,6 @@ const readingTime = computed(() => {
           </div>
         </div>
 
-        <!-- AI Suggested Tag Chips -->
         <div v-if="suggestedTags.length > 0" class="flex w-full items-center gap-1.5 flex-wrap text-xs text-muted-foreground mt-1 bg-accent/20 p-2 rounded-md border border-border/50">
           <span class="font-medium shrink-0 flex items-center gap-1"><Sparkles class="size-3 text-primary animate-pulse" /> Suggestions d'IA :</span>
           <button
@@ -696,9 +653,8 @@ const readingTime = computed(() => {
         </div>
       </div>
 
-      <!-- Format toolbar -->
       <div class="flex flex-wrap items-center gap-1.5 border-t border-border px-3 py-2 md:gap-1 md:px-4">
-        <!-- Inline marks -->
+
         <button
           type="button" title="Bold" :disabled="!store.canEdit"
           @click="run(() => editor!.chain().focus().toggleBold().run())"
@@ -732,7 +688,6 @@ const readingTime = computed(() => {
 
         <span class="tbar-sep" />
 
-        <!-- Text style (headings + paragraph) -->
         <ToolbarDropdown
           :icon="Heading" title="Text style" :disabled="!store.canEdit"
           :active="isActive('heading')">
@@ -770,7 +725,6 @@ const readingTime = computed(() => {
           </button>
         </ToolbarDropdown>
 
-        <!-- Lists -->
         <ToolbarDropdown
           :icon="List" title="Lists" :disabled="!store.canEdit"
           :active="isActive('bulletList') || isActive('orderedList') || isActive('taskList')">
@@ -800,7 +754,6 @@ const readingTime = computed(() => {
           </button>
         </ToolbarDropdown>
 
-        <!-- Insert / blocks -->
         <ToolbarDropdown
           :icon="Plus" title="Insert" :disabled="!store.canEdit"
           :active="isActive('blockquote') || isActive('codeBlock')">
@@ -869,7 +822,6 @@ const readingTime = computed(() => {
 
         <span class="tbar-sep" />
 
-        <!-- Link -->
         <button
           type="button" title="Add / edit link" :disabled="!store.canEdit"
           @click="openLinkModal"
@@ -885,7 +837,6 @@ const readingTime = computed(() => {
 
         <span class="tbar-sep" />
 
-        <!-- Text color -->
         <div class="relative">
           <button
             type="button" title="Text color" :disabled="!store.canEdit"
@@ -913,7 +864,6 @@ const readingTime = computed(() => {
           </div>
         </div>
 
-        <!-- Highlight -->
         <div class="relative">
           <button
             type="button" title="Highlight" :disabled="!store.canEdit"
@@ -943,7 +893,6 @@ const readingTime = computed(() => {
 
         <span class="tbar-sep" />
 
-        <!-- Text align -->
         <ToolbarDropdown
           :icon="currentAlignIcon" title="Alignment" :disabled="!store.canEdit"
           :active="(editorTick, editor?.isActive({ textAlign: 'center' }) || editor?.isActive({ textAlign: 'right' }) || editor?.isActive({ textAlign: 'justify' }))">
@@ -983,7 +932,6 @@ const readingTime = computed(() => {
 
         <span class="tbar-sep" />
 
-        <!-- Sub / super -->
         <button
           type="button" title="Subscript" :disabled="!store.canEdit"
           @click="run(() => editor!.chain().focus().toggleSubscript().run())"
@@ -999,7 +947,6 @@ const readingTime = computed(() => {
 
         <span class="tbar-sep" />
 
-        <!-- Clear formatting -->
         <button
           type="button" title="Clear formatting" :disabled="!store.canEdit"
           @click="clearFormatting"
@@ -1009,12 +956,11 @@ const readingTime = computed(() => {
       </div>
     </header>
 
-    <!-- ── Body + side panels ──────────────────────────── -->
     <div class="flex min-h-0 flex-1 overflow-hidden">
-      <!-- Editor body -->
+
       <main class="min-h-0 flex-1 overflow-y-auto scrollbar-thin" :class="!store.canEdit ? 'opacity-80' : ''">
         <div class="mx-auto max-w-3xl px-6 py-8 select-text">
-          <!-- Selection bubble menu -->
+
           <BubbleMenu
             v-if="editor && store.canEdit"
             :editor="editor"
@@ -1068,7 +1014,6 @@ const readingTime = computed(() => {
         </div>
       </main>
 
-      <!-- AI Summary side panel -->
       <aside
         v-if="showSummaryPanel"
         class="w-80 shrink-0 border-l border-border bg-card flex flex-col h-full overflow-hidden transition-all duration-200">
@@ -1088,7 +1033,6 @@ const readingTime = computed(() => {
         </div>
       </aside>
 
-      <!-- Comments side panel -->
       <CommentSection
         v-if="showCommentsPanel && store.currentNote"
         :note-id="store.currentNote.id"
@@ -1101,7 +1045,6 @@ const readingTime = computed(() => {
       </CommentSection>
     </div>
 
-    <!-- Add / edit link modal (replaces window.prompt) -->
     <LinkModal
       v-model:open="linkModalOpen"
       :initial-url="linkInitialUrl"
@@ -1109,10 +1052,8 @@ const readingTime = computed(() => {
       @remove="removeLink"
     />
 
-    <!-- Collaboration share modal (owner only) -->
     <ShareNoteModal v-model:open="showShares" />
 
-    <!-- Version history modal -->
     <VersionHistoryModal v-model:open="showVersions" @restore="restore" />
   </div>
 </template>
@@ -1155,7 +1096,6 @@ const readingTime = computed(() => {
   caret-color: transparent;
 }
 
-/* ── Toolbar button helpers ───────────────────────────────────── */
 .tbtn {
   display: flex;
   align-items: center;
@@ -1164,7 +1104,7 @@ const readingTime = computed(() => {
   height: 2.25rem;
   border-radius: 0.5rem;
   border: 1px solid transparent;
-  /* Kill the native WebView button chrome (the grey boxes on Android). */
+
   background: transparent;
   -webkit-appearance: none;
   appearance: none;
@@ -1175,7 +1115,7 @@ const readingTime = computed(() => {
 .tbtn-on { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); border-color: hsl(var(--border)); }
 .tbtn-off { color: hsl(var(--muted-foreground)); }
 .tbtn-off:not(:disabled):hover { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
-/* Smaller, denser buttons inside the floating selection bubble menu. */
+
 .bubble-menu .tbtn { width: 1.75rem; height: 1.75rem; }
 .tbar-sep {
   display: inline-block;
@@ -1185,17 +1125,14 @@ const readingTime = computed(() => {
   background: hsl(var(--border));
 }
 
-/* ── Links ────────────────────────────────────────────────────── */
 :deep(.prose-editor a) {
   color: hsl(var(--primary));
   text-decoration: underline;
   cursor: pointer;
 }
 
-/* ── Underline & highlight marks ──────────────────────────────── */
 :deep(.prose-editor u) { text-decoration: underline; }
-/* Default (single-colour) highlight surface. Multicolour marks carry their
-   own inline background-color via the style attribute and override this. */
+
 :deep(.prose-editor mark) {
   background-color: hsl(var(--primary) / 0.25);
   color: inherit;
@@ -1203,7 +1140,6 @@ const readingTime = computed(() => {
   padding: 0 1px;
 }
 
-/* ── Task list ────────────────────────────────────────────────── */
 :deep(.prose-editor ul[data-type="taskList"]) { list-style: none; padding: 0; }
 :deep(.prose-editor ul[data-type="taskList"] li) {
   display: flex;
@@ -1222,7 +1158,6 @@ const readingTime = computed(() => {
   text-decoration: line-through;
 }
 
-/* ── Tables ───────────────────────────────────────────────────── */
 :deep(.prose-editor table) {
   border-collapse: collapse;
   width: 100%;
@@ -1254,18 +1189,15 @@ const readingTime = computed(() => {
   width: 3px;
 }
 
-/* ── Subscript / superscript ──────────────────────────────────── */
 :deep(.prose-editor sub) { vertical-align: sub; font-size: 0.8em; }
 :deep(.prose-editor sup) { vertical-align: super; font-size: 0.8em; }
 
-/* ── Horizontal rule ──────────────────────────────────────────── */
 :deep(.prose-editor hr) {
   border: none;
   border-top: 1px solid hsl(var(--border));
   margin: 1rem 0;
 }
 
-/* ── Images (uploaded photo attachments) ──────────────────────── */
 :deep(.prose-editor img) {
   max-width: 100%;
   height: auto;
@@ -1278,17 +1210,13 @@ const readingTime = computed(() => {
   outline-offset: 2px;
 }
 
-/* ── Code block syntax highlighting (lowlight / hljs tokens) ───── */
-/* The `pre` surface (muted background, rounded, padded, overflow-x) is
-   already declared above; here we only reset the inner code + add tokens. */
 :deep(.prose-editor pre code) {
   background: transparent;
   color: inherit;
   padding: 0;
   font-size: 0.875rem;
 }
-/* Saturated accent colours read fine on the muted surface in both themes —
-   an accepted exception to the token rule for syntax tokens. */
+
 :deep(.prose-editor .hljs-keyword),
 :deep(.prose-editor .hljs-built_in) { color: #8b5cf6; }
 :deep(.prose-editor .hljs-string),

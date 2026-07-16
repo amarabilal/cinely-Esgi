@@ -28,8 +28,8 @@ export interface NotificationPayload {
 export interface NoteUpdatePayload {
   noteId: string;
   title: string;
-  content: string;   // HTML — for store previews and DB
-  json?: object;     // ProseMirror JSON — lossless, used for setContent (preserves whitespace)
+  content: string;
+  json?: object;
   from?: number;
   to?: number;
   userId: string;
@@ -64,7 +64,6 @@ export interface NoteArchivedPayload {
 
 type Handler<T> = (p: T) => void;
 
-// Module-level singletons
 const presentUsers = ref<UserPresence[]>([]);
 const remoteCursors = ref<RemoteCursor[]>([]);
 let socket: Socket | null = null;
@@ -90,8 +89,6 @@ function getSocket(token: string): Socket {
     ? io(SOCKET_URL, { transports: ['websocket', 'polling'], auth: { token } })
     : io({ transports: ['websocket', 'polling'], auth: { token } });
 
-  // Re-join the current note after a server-side disconnect (pod restart / rolling update).
-  // The `reconnect` event fires only on actual reconnections, never on the initial connect.
   socket.io.on('reconnect', () => {
     if (currentNoteId && socket) {
       socket.emit('join_note', { noteId: currentNoteId }, (res: { users: UserPresence[] }) => {
@@ -112,7 +109,7 @@ function getSocket(token: string): Socket {
   });
 
   socket.on('note_updated', (p: NoteUpdatePayload) => {
-    // Update cursor in sync with content — both arrive in the same event, no race condition
+
     if (p.from !== undefined && p.to !== undefined) {
       const cursor: RemoteCursor = {
         noteId: p.noteId, userId: p.userId, userName: p.userName, color: p.color,
@@ -126,7 +123,6 @@ function getSocket(token: string): Socket {
     noteUpdateHandlers.forEach(h => h(p));
   });
 
-  // cursor_updated is only for non-typing cursor moves (click, arrow keys)
   socket.on('cursor_updated', (cursor: RemoteCursor) => {
     const idx = remoteCursors.value.findIndex(c => c.userId === cursor.userId);
     remoteCursors.value = idx !== -1

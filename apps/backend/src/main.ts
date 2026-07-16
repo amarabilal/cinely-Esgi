@@ -8,7 +8,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  // Sentry / GlitchTip — activé uniquement si DSN configuré
+
   if (process.env.SENTRY_DSN) {
     Sentry.init({
       dsn: process.env.SENTRY_DSN,
@@ -24,9 +24,9 @@ async function bootstrap() {
 
   const corsOrigins = [
     process.env.FRONTEND_URL || 'http://localhost:5173',
-    'https://localhost',      // Capacitor Android (https scheme)
-    'capacitor://localhost',  // Capacitor iOS
-    'http://localhost',       // Capacitor Android (legacy/http scheme)
+    'https://localhost',
+    'capacitor://localhost',
+    'http://localhost',
   ];
   app.enableCors({
     origin: corsOrigins,

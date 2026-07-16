@@ -20,10 +20,10 @@ export function useNativeShell() {
 
     const applyStatusBar = async (mode: 'light' | 'dark') => {
       try {
-        // Style.Dark = light text (for dark backgrounds); Style.Light = dark text.
+
         await StatusBar.setStyle({ style: mode === 'dark' ? Style.Dark : Style.Light });
         await StatusBar.setBackgroundColor({ color: mode === 'dark' ? '#0a0a0a' : '#ffffff' });
-      } catch { /* status bar not available (e.g. tablet) */ }
+      } catch {  }
     };
 
     const mode = currentMode();

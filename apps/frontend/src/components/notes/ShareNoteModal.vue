@@ -89,7 +89,7 @@ function onKeydown(e: KeyboardEvent) {
           </div>
 
           <div class="space-y-4 p-4">
-            <!-- Add-share form -->
+
             <div class="space-y-2">
               <input
                 ref="emailEl"
@@ -105,10 +105,8 @@ function onKeydown(e: KeyboardEvent) {
               </Button>
             </div>
 
-            <!-- Separator -->
             <div class="h-px bg-border" />
 
-            <!-- Existing shares -->
             <div class="max-h-64 space-y-2 overflow-y-auto scrollbar-thin">
               <div v-if="store.shares.length === 0" class="text-center text-xs text-muted-foreground">
                 Not shared with anyone yet.

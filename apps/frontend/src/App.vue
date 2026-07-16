@@ -7,8 +7,8 @@ import OfflineBanner from '@/components/app/OfflineBanner.vue';
 import AppLock from '@/components/app/AppLock.vue';
 
 useColorMode();
-useNativeShell(); // no-op on web
-void useAppLock().init(); // no-op on web
+useNativeShell();
+void useAppLock().init();
 </script>
 
 <template>

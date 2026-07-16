@@ -66,8 +66,6 @@ const { shareNote } = useShare();
 const isOpen = ref(false);
 const rootRef = ref<HTMLElement | null>(null);
 
-// The OS share sheet is available natively (Capacitor) or on the web when the
-// Web Share API is present (secure contexts / supported browsers).
 const canSystemShare = computed(
   () => isNative || (typeof navigator !== 'undefined' && typeof navigator.share === 'function'),
 );
@@ -121,28 +119,21 @@ function htmlToMarkdown(html: string): string {
 
   let md = html;
 
-  // Headings.
   md = md.replace(/<h1[^>]*>([\s\S]*?)<\/h1>/gi, (_m, inner) => `\n# ${inner}\n`);
   md = md.replace(/<h2[^>]*>([\s\S]*?)<\/h2>/gi, (_m, inner) => `\n## ${inner}\n`);
   md = md.replace(/<h3[^>]*>([\s\S]*?)<\/h3>/gi, (_m, inner) => `\n### ${inner}\n`);
 
-  // Inline emphasis.
   md = md.replace(/<\s*(?:strong|b)[^>]*>([\s\S]*?)<\/\s*(?:strong|b)\s*>/gi, (_m, inner) => `**${inner}**`);
   md = md.replace(/<\s*(?:em|i)[^>]*>([\s\S]*?)<\/\s*(?:em|i)\s*>/gi, (_m, inner) => `*${inner}*`);
 
-  // List items -> "- " bullets.
   md = md.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_m, inner) => `- ${inner}\n`);
 
-  // Line breaks.
   md = md.replace(/<br\s*\/?>/gi, '\n');
 
-  // Paragraphs -> blank line separated blocks.
   md = md.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, (_m, inner) => `\n${inner}\n`);
 
-  // Strip any remaining tags.
   md = md.replace(/<[^>]+>/g, '');
 
-  // Decode the few entities the steps above can leave behind.
   md = md
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
@@ -151,7 +142,6 @@ function htmlToMarkdown(html: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'");
 
-  // Collapse excess blank lines and trim.
   md = md.replace(/\n{3,}/g, '\n\n').trim();
 
   return props.title ? `# ${props.title}\n\n${md}` : md;
@@ -229,7 +219,7 @@ function printNote() {
 </html>`);
   printWindow.document.close();
   printWindow.focus();
-  // Give the new document a tick to lay out before invoking print.
+
   setTimeout(() => printWindow.print(), 250);
 }
 
@@ -304,8 +294,7 @@ async function syncToGoogleCalendar(start: string, end: string) {
 async function systemShare() {
   close();
   if (!canSystemShare.value) return;
-  // useShare routes to the native OS share sheet (Capacitor) on device and falls
-  // back to the Web Share API / clipboard on the web. Cancels are swallowed.
+
   await shareNote({ title: props.title, content: props.contentHtml });
 }
 
@@ -366,7 +355,6 @@ onBeforeUnmount(() => {
         Share with people…
       </button>
 
-      <!-- Public Sharing Section -->
       <div v-if="owner" class="px-2 py-1.5 border-t border-border mt-1 pt-2">
         <div class="flex items-center justify-between">
           <span class="flex items-center gap-2 text-sm text-foreground font-medium">
@@ -454,7 +442,6 @@ onBeforeUnmount(() => {
         Share…
       </button>
 
-      <!-- Google Services options -->
       <template v-if="isGoogleConnected">
         <div class="my-1 h-px bg-border" />
         <div class="px-2 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Google services</div>
@@ -490,7 +477,7 @@ onBeforeUnmount(() => {
       </template>
     </div>
     </Transition>
-    
+
     <GoogleCalendarModal v-model:open="showCalendarModal" @submit="syncToGoogleCalendar" />
     <EmailNoteModal v-model:open="showEmailModal" :note-title="title" :note-content-html="contentHtml" />
   </div>

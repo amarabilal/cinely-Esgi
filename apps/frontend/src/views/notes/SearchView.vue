@@ -58,7 +58,7 @@ function runSearch() {
     } catch {
       store.clearSearch();
     } finally {
-      // Ignore results from a query that has since changed.
+
       if (trimmedQuery.value === q && semantic.value === useSemantic) {
         isLoading.value = false;
       }

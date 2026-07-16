@@ -13,12 +13,9 @@ export const useAuthStore = defineStore('auth', () => {
   async function setToken(token: string, refreshToken?: string) {
     accessToken.value = token;
     setAccessToken(token);
-    if (refreshToken) await setRefreshToken(refreshToken); // no-op on web
+    if (refreshToken) await setRefreshToken(refreshToken);
   }
 
-  // Keep the Pinia ref in step with a silent refresh performed by the axios
-  // interceptor (which writes localStorage but cannot import this store
-  // statically). localStorage is already updated by the interceptor.
   function syncAccessToken(token: string) {
     accessToken.value = token;
   }
@@ -28,7 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = null;
     pendingTwoFactor.value = null;
     clearAccessToken();
-    await clearRefreshToken(); // no-op on web
+    await clearRefreshToken();
   }
 
   async function register(payload: { email: string; password: string; firstName: string; lastName: string }) {

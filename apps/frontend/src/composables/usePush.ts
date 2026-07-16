@@ -21,29 +21,24 @@ import { devicesApi } from '@/api/devices.api';
  */
 const PUSH_ENABLED = isNative && import.meta.env.VITE_ENABLE_PUSH === 'true';
 
-// Remembered across the app session so `disablePush()` can tell the backend
-// which token to drop on logout.
 let lastToken: string | null = null;
 
 export function usePush() {
   async function initPush(router: Router): Promise<void> {
-    // Disabled until Firebase/FCM is configured — calling register() without it
-    // hard-crashes the native app. Enable with VITE_ENABLE_PUSH=true.
+
     if (!PUSH_ENABLED) return;
 
     try {
       const { PushNotifications } = await import('@capacitor/push-notifications');
       const { Capacitor } = await import('@capacitor/core');
 
-      // Attach listeners FIRST so we never miss the `registration` event that
-      // `register()` triggers.
       await PushNotifications.addListener('registration', (token) => {
         lastToken = token.value;
         void devicesApi.register(token.value, Capacitor.getPlatform()).catch(() => {});
       });
 
       await PushNotifications.addListener('registrationError', (err) => {
-        // No toast: FCM may simply not be configured yet.
+
         console.warn('[push] registration error', err.error);
       });
 
@@ -59,8 +54,7 @@ export function usePush() {
       const perm = await PushNotifications.requestPermissions();
       if (perm.receive === 'granted') await PushNotifications.register();
     } catch (err) {
-      // Never throw — an unconfigured FCM (or any plugin failure) must not crash
-      // the authenticated app shell.
+
       console.warn('[push] init failed', err);
     }
   }

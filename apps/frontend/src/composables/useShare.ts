@@ -24,7 +24,7 @@ export function useShare() {
         await Share.share({ title, text, url: opts.url, dialogTitle: 'Share note' });
         return;
       }
-      // Web: prefer the Web Share API, else copy to clipboard.
+
       if (typeof navigator !== 'undefined' && navigator.share) {
         await navigator.share({ title, text, url: opts.url });
         return;
@@ -32,9 +32,9 @@ export function useShare() {
       await navigator.clipboard.writeText(opts.url ? `${title}\n${opts.url}` : `${title}\n\n${text}`);
       toast.success('Copied to clipboard');
     } catch (err: any) {
-      // User-cancelled share is not an error worth surfacing.
+
       if (err?.name === 'AbortError') return;
-      // Capacitor throws if the user dismisses the sheet — swallow common cancels.
+
       const msg = String(err?.message || '');
       if (/cancel/i.test(msg)) return;
       toast.error('Could not share');

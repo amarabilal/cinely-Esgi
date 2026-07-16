@@ -29,8 +29,8 @@ export class GoogleService {
   getAuthUrl(state: string): string {
     const oauth2Client = this.getOAuth2Client();
     return oauth2Client.generateAuthUrl({
-      access_type: 'offline', // Request a refresh token
-      prompt: 'consent',     // Force consent to guarantee refresh token is returned
+      access_type: 'offline',
+      prompt: 'consent',
       scope: [
         'https://www.googleapis.com/auth/userinfo.profile',
         'https://www.googleapis.com/auth/userinfo.email',
@@ -98,7 +98,7 @@ export class GoogleService {
       }
 
       await this.userRepository.update(userId, updateData);
-      
+
       const user = await this.userRepository.findOne({ where: { id: userId } });
       if (!user) {
         throw new BadRequestException('User not found after OAuth callback');
@@ -143,7 +143,6 @@ export class GoogleService {
       expiry_date: user.googleTokenExpiresAt ? user.googleTokenExpiresAt.getTime() : undefined,
     });
 
-    // Check if token is expired or expires in the next 5 minutes
     const isExpired = user.googleTokenExpiresAt && user.googleTokenExpiresAt.getTime() < Date.now() + 5 * 60 * 1000;
     if (isExpired && user.googleRefreshToken) {
       try {
@@ -171,7 +170,7 @@ export class GoogleService {
 
     const fileMetadata = {
       name: noteTitle || 'Untitled Note',
-      mimeType: 'application/vnd.google-apps.document', // Creates a Google Doc
+      mimeType: 'application/vnd.google-apps.document',
     };
 
     const media = {
@@ -233,7 +232,6 @@ export class GoogleService {
 
     const gmail = google.gmail({ version: 'v1', auth: auth as any });
 
-    // Construct raw MIME email
     const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
     const messageParts = [
       `From: <${user.googleEmail}>`,
@@ -248,7 +246,7 @@ export class GoogleService {
     const encodedMessage = Buffer.from(message)
       .toString('base64')
       .replace(/\+/g, '-')
-      .replace(/\//g, '_')
+      .replace(/\
       .replace(/=+$/, '');
 
     try {

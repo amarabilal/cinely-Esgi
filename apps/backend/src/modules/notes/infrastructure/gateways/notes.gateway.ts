@@ -15,9 +15,9 @@ interface UserPresence {
   userId: string;
   userName: string;
   color: string;
-  // permission cache keyed by noteId — avoids async DB lookup on every keystroke
+
   permissions: Record<string, 'OWNER' | 'READ' | 'WRITE'>;
-  // resolves once the async user lookup has enriched userName (race-safety)
+
   ready?: Promise<void>;
 }
 
@@ -63,11 +63,6 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    // Set presence data SYNCHRONOUSLY — before any await — so messages that
-    // arrive before the user lookup resolves (join_note / note_update /
-    // cursor_update fire immediately on connect) never hit an undefined
-    // client.data. That race previously crashed every join with a
-    // "Cannot read/set properties of undefined" WsException.
     const presence: UserPresence = {
       userId: payload.sub,
       userName: 'User',
@@ -77,8 +72,6 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.data = presence;
     client.join(`user:${payload.sub}`);
 
-    // Enrich the display name asynchronously; join_note awaits this so the
-    // broadcast presence carries the real name.
     presence.ready = (async () => {
       const user = await this.userRepo.findOne({ where: { id: payload.sub } });
       if (!user) { client.disconnect(); return; }
@@ -101,7 +94,7 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { noteId: string },
   ) {
     const ud = client.data as UserPresence;
-    await ud.ready?.catch(() => {}); // ensure the display name is resolved
+    await ud.ready?.catch(() => {});
     let permission: 'OWNER' | 'READ' | 'WRITE';
     try {
       permission = await this.notesService.getPermission(ud.userId, data.noteId);
@@ -109,7 +102,6 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { error: 'Access denied' };
     }
 
-    // Cache permission so handleNoteUpdate can check synchronously
     ud.permissions[data.noteId] = permission;
 
     await client.join(`note:${data.noteId}`);
@@ -141,7 +133,6 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.to(`note:${data.noteId}`).emit('user_left', { userId: ud.userId });
   }
 
-  // Synchronous — permission checked from cache, no DB round-trip
   @SubscribeMessage('note_update')
   handleNoteUpdate(
     @ConnectedSocket() client: Socket,
@@ -151,7 +142,6 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const permission = ud.permissions[data.noteId];
     if (!permission || permission === 'READ') return;
 
-    // Broadcast content + JSON + cursor in a single event — no race condition
     client.to(`note:${data.noteId}`).emit('note_updated', {
       noteId: data.noteId,
       title: data.title,
@@ -172,7 +162,7 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { noteId: string; from: number; to: number },
   ) {
     const ud = client.data as UserPresence;
-    // Only broadcast cursor for users who can edit (no cursor for read-only)
+
     if (!ud.permissions[data.noteId] || ud.permissions[data.noteId] === 'READ') return;
 
     client.to(`note:${data.noteId}`).emit('cursor_updated', {
@@ -198,7 +188,7 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async emitPermissionChanged(noteId: string, targetUserId: string, permission: 'READ' | 'WRITE') {
-    // Update permission cache in the target user's socket
+
     const sockets = await this.server.in(`note:${noteId}`).fetchSockets();
     for (const s of sockets) {
       const ud = s.data as UserPresence;
@@ -210,7 +200,7 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async emitShareRevoked(noteId: string, targetUserId: string) {
-    // Remove permission from cache in the target user's socket
+
     const sockets = await this.server.in(`note:${noteId}`).fetchSockets();
     for (const s of sockets) {
       const ud = s.data as UserPresence;

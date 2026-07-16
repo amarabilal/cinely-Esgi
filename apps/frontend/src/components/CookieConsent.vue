@@ -20,7 +20,7 @@ function accept() {
 function decline() {
   localStorage.setItem(STORAGE_KEY, 'declined');
   visible.value = false;
-  // Disable Matomo tracking if loaded
+
   if ((window as any)._paq) {
     (window as any)._paq.push(['optUserOut']);
   }

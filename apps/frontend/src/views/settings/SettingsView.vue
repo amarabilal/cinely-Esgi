@@ -10,7 +10,6 @@ import MobileAppCard from '@/components/settings/MobileAppCard.vue';
 
 const store = useSettingsStore();
 
-// Biometric app lock (native only; toggle hidden unless hardware is available).
 const appLock = useAppLock();
 const appLockEnabled = ref(appLock.isEnabled());
 async function toggleAppLock(value: boolean) {
@@ -28,21 +27,18 @@ const settingsTabs: Array<[SettingsTab, string]> = [
   ['google', 'Google'],
 ];
 
-// Profile
 const firstName = ref('');
 const lastName = ref('');
 const profileSuccess = ref('');
 const profileError = ref('');
 const profileLoading = ref(false);
 
-// Password
 const currentPassword = ref('');
 const newPassword = ref('');
 const passwordSuccess = ref('');
 const passwordError = ref('');
 const passwordLoading = ref(false);
 
-// 2FA setup state
 const totpStep = ref<'idle' | 'setup' | 'confirm'>('idle');
 const qrDataUrl = ref('');
 const totpSecret = ref('');
@@ -51,16 +47,13 @@ const totpError = ref('');
 const totpSuccess = ref('');
 const recoveryCodes = ref<string[]>([]);
 
-// Disable 2FA
 const disableCode = ref('');
 const disableError = ref('');
 
-// Google Integration State
 const googleConnected = ref(false);
 const googleEmail = ref('');
 const googleLoading = ref(false);
 
-// Stripe test-mode subscription
 const subscription = ref<SubscriptionStatus | null>(null);
 const subscriptionLoading = ref(false);
 const subscriptionError = ref('');
@@ -157,7 +150,6 @@ onMounted(async () => {
     lastName.value = store.profile.lastName;
   }
 
-  // Check URL params for success redirect
   const params = new URLSearchParams(window.location.search);
   if (params.get('google_connected') === 'success') {
     activeTab.value = 'google';
@@ -260,13 +252,12 @@ function formatDate(dateStr: string) {
 <template>
   <div class="h-full overflow-y-auto bg-background text-foreground">
     <div class="mx-auto max-w-4xl px-6 py-8">
-      <!-- Page header -->
+
       <header class="mb-8">
         <p class="font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Account</p>
         <h1 class="mt-1 text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
       </header>
 
-      <!-- Tabs -->
       <div class="flex gap-1 mb-8 bg-muted rounded-xl p-1 overflow-x-auto">
         <button v-for="[key, label] in settingsTabs"
           :key="key"
@@ -277,7 +268,6 @@ function formatDate(dateStr: string) {
         </button>
       </div>
 
-      <!-- Subscription Tab -->
       <div v-if="activeTab === 'subscription'" class="space-y-6">
         <div class="bg-card border border-border rounded-xl p-6 space-y-6">
           <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -342,7 +332,6 @@ function formatDate(dateStr: string) {
         </div>
       </div>
 
-      <!-- Profile Tab -->
       <div v-if="activeTab === 'profile'" class="space-y-6">
         <div class="bg-card border border-border rounded-xl p-6 space-y-4">
           <h2 class="text-base font-semibold text-foreground">Personal Information</h2>
@@ -372,9 +361,8 @@ function formatDate(dateStr: string) {
         <MobileAppCard />
       </div>
 
-      <!-- Security Tab -->
       <div v-if="activeTab === 'security'" class="space-y-6">
-        <!-- App Lock (native + biometric hardware available only) -->
+
         <div v-if="isNative && appLock.available.value" class="bg-card border border-border rounded-xl p-6 space-y-4">
           <div class="flex items-center justify-between gap-4">
             <div>
@@ -395,7 +383,6 @@ function formatDate(dateStr: string) {
           </div>
         </div>
 
-        <!-- Change Password -->
         <div class="bg-card border border-border rounded-xl p-6 space-y-4">
           <h2 class="text-base font-semibold text-foreground">Change Password</h2>
 
@@ -418,7 +405,6 @@ function formatDate(dateStr: string) {
           </Button>
         </div>
 
-        <!-- 2FA -->
         <div class="bg-card border border-border rounded-xl p-6 space-y-4">
           <div class="flex items-center justify-between">
             <div>
@@ -432,7 +418,6 @@ function formatDate(dateStr: string) {
 
           <p v-if="totpSuccess" class="text-sm text-primary">{{ totpSuccess }}</p>
 
-          <!-- Recovery codes (shown once after enabling) -->
           <div v-if="recoveryCodes.length > 0" class="bg-muted border border-border rounded-xl p-4 space-y-3">
             <p class="text-sm font-semibold text-foreground">Save your recovery codes</p>
             <p class="text-xs text-muted-foreground">Store these codes safely. Each code can only be used once if you lose access to your authenticator app.</p>
@@ -448,7 +433,6 @@ function formatDate(dateStr: string) {
             </button>
           </div>
 
-          <!-- Setup flow -->
           <template v-if="!store.profile?.totpEnabled">
             <div v-if="totpStep === 'idle'">
               <Button @click="startTotpSetup">Enable 2FA</Button>
@@ -476,7 +460,6 @@ function formatDate(dateStr: string) {
             </div>
           </template>
 
-          <!-- Disable flow -->
           <template v-if="store.profile?.totpEnabled">
             <div class="space-y-3">
               <p class="text-sm text-muted-foreground">Enter your current 2FA code to disable it.</p>
@@ -489,7 +472,6 @@ function formatDate(dateStr: string) {
         </div>
       </div>
 
-      <!-- Sessions Tab -->
       <div v-if="activeTab === 'sessions'" class="bg-card border border-border rounded-xl p-6 space-y-4">
         <h2 class="text-base font-semibold text-foreground">Active Sessions</h2>
         <p class="text-sm text-muted-foreground">These are the devices currently signed in to your account.</p>
@@ -510,7 +492,6 @@ function formatDate(dateStr: string) {
         </div>
       </div>
 
-      <!-- Google Tab -->
       <div v-if="activeTab === 'google'" class="bg-card border border-border rounded-xl p-6 space-y-6">
         <div>
           <h2 class="text-base font-semibold text-foreground">Google Integration</h2>

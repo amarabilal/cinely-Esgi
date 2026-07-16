@@ -56,8 +56,7 @@ export class GoogleController {
         secret: process.env.JWT_ACCESS_SECRET,
       });
       const userId = payload.sub;
-      // Encode the originating platform in `state` so the callback knows whether
-      // to redirect to the web app or deep-link back into the mobile app.
+
       const state = platform === 'mobile' ? `${userId}|mobile` : userId;
       const url = this.googleService.getAuthUrl(state);
       return res.redirect(url);
@@ -131,7 +130,7 @@ export class GoogleController {
 
     const htmlLink = await this.googleService.createCalendarEvent(user.sub, {
       title: note.title || 'Untitled Note Event',
-      description: `Synced from Cinely Notes app. \n\nContent:\n${note.content.replace(/<[^>]*>/g, '')}`, // Strip HTML for description
+      description: `Synced from Cinely Notes app. \n\nContent:\n${note.content.replace(/<[^>]*>/g, '')}`,
       start: new Date(body.start),
       end: new Date(body.end),
     });
@@ -167,7 +166,6 @@ export class GoogleController {
   }
 }
 
-// Controller mapped under /api/google/callback (uses standard /api prefix)
 @Controller('google')
 export class GoogleCallbackController {
   constructor(
@@ -195,10 +193,7 @@ export class GoogleCallbackController {
         const tokens = await this.googleService.handleLoginCallback(code);
 
         if (isMobile) {
-          // Native clients can't read the httpOnly refresh cookie, so we hand
-          // back a short-lived, single-purpose code instead of tokens: the app
-          // exchanges it over HTTPS at POST /auth/google/exchange. Keeping the
-          // refresh token out of the cinely:// URL is the point.
+
           const code_ = this.jwtService.sign(
             { sub: tokens.userId, purpose: 'google-exchange' },
             { expiresIn: '60s', secret: process.env.JWT_ACCESS_SECRET },
@@ -225,9 +220,7 @@ export class GoogleCallbackController {
         );
       }
     } else {
-      // Account-connect flow. `state` is the userId, optionally suffixed with
-      // `|mobile` when the request originated from the React Native app — in
-      // which case we deep-link back into the app instead of the web frontend.
+
       const [userId, platform] = state.split('|');
       const isMobile = platform === 'mobile';
       try {

@@ -24,7 +24,7 @@ function formatDate(dateStr: string) {
 <template>
   <div class="h-full overflow-y-auto bg-background text-foreground">
     <div class="mx-auto max-w-4xl px-4 sm:px-6 py-8">
-      <!-- Page header -->
+
       <header class="mb-8">
         <p class="font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
         <h1 class="mt-1 text-2xl font-semibold tracking-tight text-foreground">Dashboard</h1>
@@ -35,7 +35,7 @@ function formatDate(dateStr: string) {
       </div>
 
       <div v-else-if="stats" class="space-y-8">
-      <!-- Stats cards -->
+
       <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div class="bg-card border border-border rounded-xl p-5">
           <p class="text-3xl font-bold text-primary">{{ stats.totalNotes }}</p>
@@ -59,7 +59,6 @@ function formatDate(dateStr: string) {
         </div>
       </div>
 
-      <!-- Recent notes -->
       <div class="bg-card border border-border rounded-xl p-6">
         <h2 class="text-base font-semibold text-foreground mb-4">Recent notes</h2>
         <div v-if="stats.recentNotes.length === 0" class="text-sm text-muted-foreground text-center py-4">
@@ -73,7 +72,6 @@ function formatDate(dateStr: string) {
         </div>
       </div>
 
-      <!-- Top tags -->
       <div v-if="stats.topTags.length > 0" class="bg-card border border-border rounded-xl p-6">
         <h2 class="text-base font-semibold text-foreground mb-4">Most used tags</h2>
         <div class="space-y-3">

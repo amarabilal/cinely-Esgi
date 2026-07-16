@@ -20,10 +20,6 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { createLowlight } from 'lowlight';
 import { SlashCommand } from './slash-command';
 
-// lowlight v3: start with an EMPTY registry so the heavy highlight.js language
-// grammars (the bulk of the editor bundle) are NOT in the initial chunk. The
-// CodeBlockLowlight node must exist at editor-creation time (it defines a schema
-// node), but its grammars are loaded on demand via loadCodeHighlighting().
 const lowlight = createLowlight();
 
 let highlightingLoaded = false;
@@ -40,16 +36,14 @@ export async function loadCodeHighlighting(editor?: Editor | null): Promise<void
   try {
     const { default: languages } = await import('./highlight-languages');
     for (const [name, grammar] of Object.entries(languages)) {
-      try { lowlight.register(name, grammar); } catch { /* already registered */ }
+      try { lowlight.register(name, grammar); } catch {  }
     }
     if (editor && !editor.isDestroyed && !editor.isFocused) {
-      // Replacing the doc with itself forces the lowlight plugin to recompute
-      // decorations with the now-registered grammars (emitUpdate=false so this
-      // does not trigger save/sync). No-op visually except code now highlights.
+
       editor.commands.setContent(editor.getJSON(), false);
     }
   } catch {
-    highlightingLoaded = false; // allow a later retry if the chunk failed to load
+    highlightingLoaded = false;
   }
 }
 
@@ -62,7 +56,7 @@ export async function loadCodeHighlighting(editor?: Editor | null): Promise<void
  */
 export function richTextExtensions(): AnyExtension[] {
   return [
-    // codeBlock is disabled here and replaced by CodeBlockLowlight below.
+
     StarterKit.configure({ codeBlock: false }),
     Underline,
     Link.configure({
@@ -74,7 +68,7 @@ export function richTextExtensions(): AnyExtension[] {
       },
     }),
     Highlight.configure({ multicolor: true }),
-    TextStyle, // required by Color
+    TextStyle,
     Color,
     TaskList,
     TaskItem.configure({ nested: true }),
@@ -86,7 +80,7 @@ export function richTextExtensions(): AnyExtension[] {
     TableHeader,
     TableCell,
     Image.configure({ inline: false, allowBase64: false }),
-    Typography, // smart quotes, dashes, arrows like Notion/Docs
+    Typography,
     CodeBlockLowlight.configure({ lowlight }),
     SlashCommand,
   ];

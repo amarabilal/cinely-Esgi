@@ -17,7 +17,7 @@ export class SubscriptionService {
 
   private getStripe(): Stripe | null {
     const secretKey = process.env.STRIPE_SECRET_KEY?.trim();
-    // This feature is intentionally test-only. Never allow a live key here.
+
     if (!secretKey?.startsWith('sk_test_')) return null;
     return new Stripe(secretKey);
   }
@@ -66,14 +66,12 @@ export class SubscriptionService {
         expand: ['subscription'],
       });
     } catch {
-      // A browser may retain an expired/deleted test Session ID. It should not
-      // prevent the current user from viewing the configured subscription plan.
+
       return inactiveStatus;
     }
 
     if (session.client_reference_id !== userId || session.metadata?.userId !== userId) {
-      // sessionStorage is shared by logins on this origin. Ignore a Checkout
-      // Session created by a previously signed-in account without leaking it.
+
       return inactiveStatus;
     }
 

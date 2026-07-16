@@ -17,10 +17,8 @@ const newCommentContent = ref('');
 const replyingToId = ref<string | null>(null);
 const replyContent = ref('');
 
-// Current user ID
 const currentUserId = computed(() => {
-  // If the store exposes user ID, let's read it, otherwise decode from token if needed
-  // Let's check authStore structure
+
   return authStore.user?.id || '';
 });
 
@@ -71,7 +69,7 @@ async function addReply(parentId: string) {
 async function deleteComment(commentId: string) {
   try {
     await commentsApi.remove(props.noteId, commentId);
-    // Delete comment and all its replies from the local list
+
     comments.value = comments.value.filter(
       (c) => c.id !== commentId && c.parentId !== commentId
     );
@@ -81,7 +79,6 @@ async function deleteComment(commentId: string) {
   }
 }
 
-// Group comments hierarchically
 const rootComments = computed(() => {
   return comments.value.filter((c) => !c.parentId);
 });
@@ -115,7 +112,7 @@ watch(
 
 <template>
   <div class="flex h-full flex-col bg-card border-l border-border w-80 sm:w-96 shadow-lg">
-    <!-- Header -->
+
     <div class="flex items-center justify-between border-b border-border px-4 py-3 bg-muted/20">
       <div class="flex items-center gap-2 font-medium text-foreground">
         <MessageSquare class="size-4 text-primary" />
@@ -127,7 +124,6 @@ watch(
       <slot name="close-button"></slot>
     </div>
 
-    <!-- Comments list -->
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
       <div v-if="loading" class="flex flex-col items-center justify-center py-12 space-y-2">
         <div class="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
@@ -139,17 +135,15 @@ watch(
         Aucun commentaire. Soyez le premier à réagir !
       </div>
 
-      <!-- Root comments list -->
       <div v-else class="space-y-4">
         <div v-for="comment in rootComments" :key="comment.id" class="space-y-3">
-          <!-- Root comment item -->
+
           <div class="group relative flex gap-3 rounded-lg border border-border/60 bg-muted/10 p-3 hover:bg-muted/20 transition-all duration-150">
-            <!-- User avatar -->
+
             <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold">
               {{ getUserInitials(comment.user?.firstName, comment.user?.lastName) }}
             </div>
 
-            <!-- Content column -->
             <div class="flex-1 space-y-1">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold text-foreground">
@@ -160,8 +154,7 @@ watch(
                 </span>
               </div>
               <p class="text-sm text-muted-foreground leading-normal whitespace-pre-line">{{ comment.content }}</p>
-              
-              <!-- Action bar -->
+
               <div class="flex items-center gap-3 pt-1">
                 <button
                   type="button"
@@ -184,16 +177,15 @@ watch(
             </div>
           </div>
 
-          <!-- Replies list container -->
           <div v-if="getReplies(comment.id).length > 0" class="pl-6 space-y-2 border-l-2 border-muted/50 ml-3">
             <div
               v-for="reply in getReplies(comment.id)"
               :key="reply.id"
               class="group/reply relative flex gap-3 rounded-lg border border-border/40 bg-muted/5 p-2.5 hover:bg-muted/10 transition-all duration-150"
             >
-              <!-- Small Reply Icon indicator -->
+
               <CornerDownRight class="absolute -left-5 top-3.5 size-3.5 text-muted-foreground/60" />
-              
+
               <div class="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold">
                 {{ getUserInitials(reply.user?.firstName, reply.user?.lastName) }}
               </div>
@@ -221,7 +213,6 @@ watch(
             </div>
           </div>
 
-          <!-- Reply input field nested -->
           <div v-if="replyingToId === comment.id" class="pl-6 ml-3 mt-1.5 flex gap-2">
             <input
               v-model="replyContent"
@@ -241,7 +232,6 @@ watch(
       </div>
     </div>
 
-    <!-- Main Comment Input -->
     <div class="border-t border-border p-3 bg-muted/10">
       <div class="flex gap-2">
         <textarea

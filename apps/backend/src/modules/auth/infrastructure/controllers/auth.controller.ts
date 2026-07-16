@@ -106,8 +106,7 @@ export class AuthController {
 
     const { accessToken, refreshToken } = await this.authService.issueTokensForUser(payload.sub);
     res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
-    // Always both tokens: only native clients reach this route, and they cannot
-    // read the cookie (see tokenResponse's rule).
+
     return { accessToken, refreshToken };
   }
 

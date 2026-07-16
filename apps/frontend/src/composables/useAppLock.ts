@@ -14,7 +14,6 @@ import { isNative } from '@/lib/platform';
 
 const STORAGE_KEY = 'cinely-biometric-lock';
 
-// Module-level singleton state — shared across every useAppLock() caller.
 const locked = ref(false);
 /** Whether the device actually has biometric hardware enrolled & usable. */
 const available = ref(false);
@@ -64,7 +63,7 @@ async function verify(): Promise<boolean> {
     });
     return true;
   } catch {
-    // verifyIdentity rejects on cancel / failed match — treat as not unlocked.
+
     return false;
   }
 }
@@ -77,7 +76,7 @@ async function tryUnlock(): Promise<void> {
   try {
     const ok = await verify();
     if (ok) locked.value = false;
-    // On failure keep locked — the overlay lets the user retry.
+
   } finally {
     unlocking = false;
   }
@@ -95,13 +94,13 @@ async function setEnabled(value: boolean): Promise<void> {
   try {
     localStorage.setItem(STORAGE_KEY, value ? 'true' : 'false');
   } catch {
-    /* storage unavailable — best effort */
+
   }
   if (value) {
-    // Make sure we actually know availability before relying on the gate.
+
     await refreshAvailability();
   } else {
-    // Disabling must never leave the user stuck behind the overlay.
+
     locked.value = false;
   }
 }
@@ -121,13 +120,11 @@ async function init(): Promise<void> {
     void tryUnlock();
   }
 
-  // Re-lock whenever the app comes back to the foreground.
   if (!resumeListenerAttached) {
     resumeListenerAttached = true;
     try {
       const { App } = await import('@capacitor/app');
-      // Single foreground signal (appStateChange) to avoid double biometric
-      // prompts — 'resume' would fire redundantly alongside this on Android.
+
       App.addListener('appStateChange', ({ isActive }) => {
         if (isActive) {
           lock();
@@ -135,7 +132,7 @@ async function init(): Promise<void> {
         }
       });
     } catch {
-      /* @capacitor/app unavailable — skip resume relock */
+
     }
   }
 }

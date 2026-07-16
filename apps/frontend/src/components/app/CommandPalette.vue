@@ -21,7 +21,6 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 const trimmedQuery = computed(() => query.value.trim());
 const hasQuery = computed(() => trimmedQuery.value.length >= 1);
 
-// When searching, show the server-side results; otherwise the most recent notes.
 const displayedNotes = computed(() => {
   if (hasQuery.value) return store.searchResults ?? [];
   return (store.notes ?? []).slice(0, RECENT_LIMIT);
@@ -47,7 +46,7 @@ function runSearch() {
     } catch {
       store.clearSearch();
     } finally {
-      // Ignore results from a query that has since changed.
+
       if (trimmedQuery.value === q) isSearching.value = false;
     }
   }, SEARCH_DEBOUNCE_MS);
@@ -185,7 +184,7 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* Backdrop fade. */
+
 .modal-enter-active,
 .modal-leave-active {
   transition: opacity 0.18s ease;
@@ -196,7 +195,6 @@ onBeforeUnmount(() => {
   opacity: 0;
 }
 
-/* Panel scale + translate, decoupled from the backdrop fade. */
 .modal-enter-active .modal-panel,
 .modal-leave-active .modal-panel {
   transition:
