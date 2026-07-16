@@ -87,8 +87,18 @@ function getSocket(token: string): Socket {
   if (socket) return socket;
 
   socket = SOCKET_URL
-    ? io(SOCKET_URL, { transports: ['websocket'], auth: { token } })
-    : io({ transports: ['websocket'], auth: { token } });
+    ? io(SOCKET_URL, { transports: ['websocket', 'polling'], auth: { token } })
+    : io({ transports: ['websocket', 'polling'], auth: { token } });
+
+  // Re-join the current note after a server-side disconnect (pod restart / rolling update).
+  // The `reconnect` event fires only on actual reconnections, never on the initial connect.
+  socket.io.on('reconnect', () => {
+    if (currentNoteId && socket) {
+      socket.emit('join_note', { noteId: currentNoteId }, (res: { users: UserPresence[] }) => {
+        presentUsers.value = res?.users ?? [];
+      });
+    }
+  });
 
   socket.on('user_joined', (user: UserPresence) => {
     if (!presentUsers.value.find(u => u.userId === user.userId)) {
