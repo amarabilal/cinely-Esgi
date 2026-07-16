@@ -343,29 +343,31 @@ function formatDate(dateStr: string) {
       </div>
 
       <!-- Profile Tab -->
-      <div v-if="activeTab === 'profile'" class="bg-card border border-border rounded-xl p-6 space-y-4">
-        <h2 class="text-base font-semibold text-foreground">Personal Information</h2>
-        <p v-if="store.profile" class="text-sm text-muted-foreground">{{ store.profile.email }}</p>
+      <div v-if="activeTab === 'profile'" class="space-y-6">
+        <div class="bg-card border border-border rounded-xl p-6 space-y-4">
+          <h2 class="text-base font-semibold text-foreground">Personal Information</h2>
+          <p v-if="store.profile" class="text-sm text-muted-foreground">{{ store.profile.email }}</p>
 
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-foreground">First name</label>
-            <input v-model="firstName" type="text"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-foreground">First name</label>
+              <input v-model="firstName" type="text"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-foreground">Last name</label>
+              <input v-model="lastName" type="text"
+                class="w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
+            </div>
           </div>
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-foreground">Last name</label>
-            <input v-model="lastName" type="text"
-              class="w-full rounded-md border border-input bg-background px-3 py-2 text-base sm:text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50" />
-          </div>
+
+          <p v-if="profileSuccess" class="text-sm text-primary">{{ profileSuccess }}</p>
+          <p v-if="profileError" class="text-sm text-destructive">{{ profileError }}</p>
+
+          <Button :disabled="profileLoading" @click="saveProfile">
+            {{ profileLoading ? 'Saving…' : 'Save changes' }}
+          </Button>
         </div>
-
-        <p v-if="profileSuccess" class="text-sm text-primary">{{ profileSuccess }}</p>
-        <p v-if="profileError" class="text-sm text-destructive">{{ profileError }}</p>
-
-        <Button :disabled="profileLoading" @click="saveProfile">
-          {{ profileLoading ? 'Saving…' : 'Save changes' }}
-        </Button>
 
         <MobileAppCard />
       </div>
