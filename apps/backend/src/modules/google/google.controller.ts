@@ -35,8 +35,8 @@ export class GoogleController {
 
   @ApiOperation({ summary: 'Redirects to Google OAuth page for login' })
   @Get('login')
-  async loginRedirect(@Res() res: Response) {
-    const url = this.googleService.getLoginAuthUrl();
+  async loginRedirect(@Query('platform') platform: string, @Res() res: Response) {
+    const url = this.googleService.getLoginAuthUrl(platform);
     return res.redirect(url);
   }
 
