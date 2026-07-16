@@ -6,6 +6,7 @@ import { useAppLock } from '@/composables/useAppLock';
 import { isNative } from '@/lib/platform';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import MobileAppCard from '@/components/settings/MobileAppCard.vue';
 
 const store = useSettingsStore();
 
@@ -365,6 +366,8 @@ function formatDate(dateStr: string) {
         <Button :disabled="profileLoading" @click="saveProfile">
           {{ profileLoading ? 'Saving…' : 'Save changes' }}
         </Button>
+
+        <MobileAppCard />
       </div>
 
       <!-- Security Tab -->
