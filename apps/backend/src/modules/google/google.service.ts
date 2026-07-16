@@ -51,7 +51,7 @@ export class GoogleService {
     return this.getAuthUrl(platform === 'mobile' ? 'login|mobile' : 'login');
   }
 
-  async handleLoginCallback(code: string): Promise<{ accessToken: string; refreshToken: string }> {
+  async handleLoginCallback(code: string): Promise<{ accessToken: string; refreshToken: string; userId: string }> {
     const oauth2Client = this.getOAuth2Client();
     try {
       const { tokens } = await oauth2Client.getToken(code);
