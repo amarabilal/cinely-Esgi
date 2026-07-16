@@ -104,6 +104,7 @@ export class NoteTypeOrmRepository implements INoteRepository {
     const rows: Array<{ id: string }> = await this.repo.manager.query(
       `SELECT id FROM notes
        WHERE user_id = $1 AND is_deleted = false AND is_archived = false AND embedding IS NOT NULL
+         AND (embedding::vector <=> $2::vector) < 0.6
        ORDER BY embedding::vector <=> $2::vector
        LIMIT 20`,
       [userId, embeddingJson],

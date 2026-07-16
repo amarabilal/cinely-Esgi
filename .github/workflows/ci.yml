@@ -166,7 +166,10 @@ jobs:
               {\"op\":\"add\",\"path\":\"/data/GOOGLE_CLIENT_ID\",\"value\":\"$(echo -n '${{ secrets.GOOGLE_CLIENT_ID }}' | base64 -w0)\"},
               {\"op\":\"add\",\"path\":\"/data/GOOGLE_CLIENT_SECRET\",\"value\":\"$(echo -n '${{ secrets.GOOGLE_CLIENT_SECRET }}' | base64 -w0)\"},
               {\"op\":\"add\",\"path\":\"/data/GOOGLE_REDIRECT_URI\",\"value\":\"$(echo -n '${{ secrets.GOOGLE_REDIRECT_URI }}' | base64 -w0)\"},
-              {\"op\":\"add\",\"path\":\"/data/SENTRY_DSN\",\"value\":\"$(echo -n '${{ secrets.SENTRY_DSN }}' | base64 -w0)\"}
+              {\"op\":\"add\",\"path\":\"/data/SENTRY_DSN\",\"value\":\"$(echo -n '${{ secrets.SENTRY_DSN }}' | base64 -w0)\"},
+              {\"op\":\"add\",\"path\":\"/data/STRIPE_SECRET_KEY\",\"value\":\"$(echo -n '${{ secrets.STRIPE_SECRET_KEY }}' | base64 -w0)\"},
+              {\"op\":\"add\",\"path\":\"/data/STRIPE_PRICE_ID\",\"value\":\"$(echo -n '${{ secrets.STRIPE_PRICE_ID }}' | base64 -w0)\"},
+              {\"op\":\"add\",\"path\":\"/data/STRIPE_PLAN_NAME\",\"value\":\"$(echo -n '${{ secrets.STRIPE_PLAN_NAME }}' | base64 -w0)\"}
             ]"
 
       - name: Apply manifests

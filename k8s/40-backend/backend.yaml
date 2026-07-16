@@ -134,6 +134,21 @@ spec:
                 secretKeyRef:
                   name: app-secret
                   key: GOOGLE_REDIRECT_URI
+            - name: STRIPE_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: STRIPE_SECRET_KEY
+            - name: STRIPE_PRICE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: STRIPE_PRICE_ID
+            - name: STRIPE_PLAN_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: STRIPE_PLAN_NAME
           # Chemin /api/health — global prefix 'api' défini dans main.ts
           readinessProbe:
             httpGet:
