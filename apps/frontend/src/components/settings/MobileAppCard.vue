@@ -14,7 +14,7 @@ import {
   <div v-if="!isNative" class="bg-card border border-border rounded-xl p-6 space-y-3">
     <div class="flex items-center gap-2">
       <Smartphone class="size-4 text-primary" />
-      <h3 class="text-sm font-semibold text-foreground">Mobile app</h3>
+      <h2 class="text-base font-semibold text-foreground">Mobile app</h2>
     </div>
     <p class="text-sm text-muted-foreground">
       Install Cinely on your Android phone — same account, notes synced in real time.

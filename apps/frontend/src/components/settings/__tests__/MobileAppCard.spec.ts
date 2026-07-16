@@ -26,6 +26,7 @@ describe('MobileAppCard', () => {
   it('renders nothing inside the native (Capacitor) shell', async () => {
     const w = await mountCard(true);
     expect(w.find('a').exists()).toBe(false);
+    expect(w.find('div').exists()).toBe(false);
     expect(w.text()).toBe('');
   });
 });
