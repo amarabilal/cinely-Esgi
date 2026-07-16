@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 
 import { api } from '@/lib/api';
+import { signInWithGoogle, type GoogleSignInResult } from '@/lib/googleAuth';
 import {
   clearTokens,
   getAccessToken,
@@ -25,6 +26,8 @@ interface AuthState {
   hydrate: () => Promise<void>;
   /** Returns a 2FA challenge if the backend requires it, otherwise null on success. */
   login: (email: string, password: string) => Promise<TwoFactorChallenge | null>;
+  /** Runs the Google OAuth sign-in; establishes the session on success. */
+  loginWithGoogle: () => Promise<GoogleSignInResult>;
   register: (payload: {
     email: string;
     password: string;
@@ -87,6 +90,14 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     await establishSession(data, set);
     return null;
+  },
+
+  loginWithGoogle: async () => {
+    const result = await signInWithGoogle();
+    if (result.status === 'success') {
+      await establishSession(result.tokens, set);
+    }
+    return result;
   },
 
   register: async (payload) => {

@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { GoogleSignInButton } from '@/components/GoogleSignInButton';
 import { Palette } from '@/constants/theme';
 import { useAuthStore } from '@/stores/auth';
 
@@ -37,6 +38,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   async function handleCreate() {
     if (loading) return;
@@ -67,7 +69,8 @@ export default function RegisterScreen() {
     lastName.trim().length > 0 &&
     email.trim().length > 0 &&
     password.length > 0 &&
-    !loading;
+    !loading &&
+    !googleBusy;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -142,6 +145,8 @@ export default function RegisterScreen() {
                 <Text style={styles.buttonText}>Create account</Text>
               )}
             </TouchableOpacity>
+
+            <GoogleSignInButton onError={setError} disabled={loading} onLoadingChange={setGoogleBusy} />
 
             <Link href="/(auth)/login" asChild>
               <TouchableOpacity activeOpacity={0.7}>

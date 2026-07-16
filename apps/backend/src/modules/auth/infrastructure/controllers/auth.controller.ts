@@ -1,7 +1,8 @@
 import {
-  Controller, Post, Get, Body, Param, Req, Res, HttpCode, UseGuards,
+  Controller, Post, Get, Body, Param, Req, Res, HttpCode, UseGuards, UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { JwtService } from '@nestjs/jwt';
 import { Request, Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from '../../application/services/auth.service';
@@ -11,6 +12,7 @@ import { ForgotPasswordDto } from '../../application/dto/forgot-password.dto';
 import { ResetPasswordDto } from '../../application/dto/reset-password.dto';
 import { Verify2faDto } from '../../application/dto/verify-2fa.dto';
 import { RefreshTokenDto } from '../../application/dto/refresh-token.dto';
+import { GoogleExchangeDto } from '../../application/dto/google-exchange.dto';
 import { JwtAuthGuard } from '../../../../shared/guards/jwt.guard';
 import { CurrentUser } from '../../../../shared/decorators/current-user.decorator';
 
@@ -25,7 +27,10 @@ const COOKIE_OPTIONS = {
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   /** Native clients (Capacitor) send this header and store the refresh token themselves. */
   private isNativeClient(req: Request): boolean {
@@ -82,6 +87,28 @@ export class AuthController {
     const { accessToken, refreshToken } = await this.authService.refresh(presented);
     res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
     return this.tokenResponse(req, accessToken, refreshToken);
+  }
+
+  @ApiOperation({ summary: 'Exchange a mobile Google sign-in code for tokens' })
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Post('google/exchange')
+  @HttpCode(200)
+  async googleExchange(@Body() dto: GoogleExchangeDto, @Res({ passthrough: true }) res: Response) {
+    let payload: { sub: string; purpose?: string };
+    try {
+      payload = this.jwtService.verify(dto.code, { secret: process.env.JWT_ACCESS_SECRET });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired sign-in code');
+    }
+    if (payload.purpose !== 'google-exchange') {
+      throw new UnauthorizedException('Invalid sign-in code');
+    }
+
+    const { accessToken, refreshToken } = await this.authService.issueTokensForUser(payload.sub);
+    res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
+    // Always both tokens: only native clients reach this route, and they cannot
+    // read the cookie (see tokenResponse's rule).
+    return { accessToken, refreshToken };
   }
 
   @Get('me')

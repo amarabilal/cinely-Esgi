@@ -42,11 +42,16 @@ export class GoogleService {
     });
   }
 
-  getLoginAuthUrl(): string {
-    return this.getAuthUrl('login');
+  /**
+   * Auth URL for the sign-in flow. `platform` is encoded into `state` so the
+   * callback knows whether to redirect to the web app or deep-link into the
+   * mobile app — same `|mobile` convention the connect flow uses.
+   */
+  getLoginAuthUrl(platform?: string): string {
+    return this.getAuthUrl(platform === 'mobile' ? 'login|mobile' : 'login');
   }
 
-  async handleLoginCallback(code: string): Promise<{ accessToken: string; refreshToken: string }> {
+  async handleLoginCallback(code: string): Promise<{ accessToken: string; refreshToken: string; userId: string }> {
     const oauth2Client = this.getOAuth2Client();
     try {
       const { tokens } = await oauth2Client.getToken(code);

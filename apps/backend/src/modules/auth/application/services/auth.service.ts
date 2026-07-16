@@ -259,6 +259,17 @@ export class AuthService {
 
     await this.userRepository.update(user.id, updateData);
 
+    const tokens = await this.createTokenPair(user.id, user.email);
+    return { ...tokens, userId: user.id };
+  }
+
+  /**
+   * Mints a fresh token pair for an existing user. Used by the mobile Google
+   * sign-in exchange, which holds a verified userId but no credentials.
+   */
+  async issueTokensForUser(userId: string) {
+    const user = await this.userRepository.findById(userId);
+    if (!user) throw new UnauthorizedException('User not found');
     return this.createTokenPair(user.id, user.email);
   }
 

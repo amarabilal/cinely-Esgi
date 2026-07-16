@@ -342,4 +342,35 @@ describe('AuthService', () => {
       await expect(service.verifyEmail('expired')).rejects.toThrow(BadRequestException);
     });
   });
+
+  // ── OAuth token issuing ─────────────────────────────────────
+  describe('OAuth token issuing', () => {
+    it('loginOAuth returns the userId alongside the token pair', async () => {
+      userRepo.findByEmail.mockResolvedValue(makeUser({ email: 'g@example.com' }));
+      userRepo.update.mockResolvedValue(undefined);
+
+      const out = await service.loginOAuth('g@example.com', 'G', 'U', { accessToken: 'ga' });
+      expect(out).toEqual(
+        expect.objectContaining({
+          accessToken: expect.any(String),
+          refreshToken: expect.any(String),
+          userId: expect.any(String),
+        }),
+      );
+      expect(out.userId).toBe('user-1');
+    });
+
+    it('issueTokensForUser mints a pair for an existing user', async () => {
+      userRepo.findById.mockResolvedValue(makeUser());
+
+      const out = await service.issueTokensForUser('user-1');
+      expect(out.accessToken).toEqual(expect.any(String));
+      expect(out.refreshToken).toEqual(expect.any(String));
+    });
+
+    it('issueTokensForUser rejects an unknown user', async () => {
+      userRepo.findById.mockResolvedValue(null);
+      await expect(service.issueTokensForUser('nope')).rejects.toThrow(UnauthorizedException);
+    });
+  });
 });
