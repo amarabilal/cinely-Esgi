@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, RouterLinkStub } from '@vue/test-utils';
 import { Button } from '../index';
 
 describe('Button', () => {
@@ -20,5 +20,19 @@ describe('Button', () => {
     expect(a.attributes('rel')).toBe('noopener');
     expect(w.find('button').exists()).toBe(false);
     expect(a.classes().length).toBeGreaterThan(0); // shares the button styling
+  });
+
+  it('renders a RouterLink when to is set', () => {
+    const w = mount(Button, {
+      props: { to: '/register' },
+      slots: { default: 'Go' },
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    });
+    const link = w.findComponent(RouterLinkStub);
+    expect(link.exists()).toBe(true);
+    expect(link.props('to')).toBe('/register');
+    expect(w.find('a[href]').exists()).toBe(false); // not the href branch
+    expect(w.find('button').exists()).toBe(false);
+    expect(w.find('a').classes().length).toBeGreaterThan(0); // shares the button styling
   });
 });
