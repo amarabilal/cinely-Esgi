@@ -36,6 +36,10 @@ export function GoogleSignInButton({ onError, disabled }: Props) {
         onError(result.message);
       }
       // 'cancelled' → silently re-enable, no error shown.
+    } catch {
+      // establishSession can reject after tokens persist (e.g. the /auth/me
+      // fetch fails); surface it instead of an unhandled rejection.
+      onError('Sign-in failed, please try again.');
     } finally {
       setLoading(false);
     }
